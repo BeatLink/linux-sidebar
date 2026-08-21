@@ -738,35 +738,48 @@ class Sidebar(Gtk.Window):
             return True
         return False
 
-    # GTK's own context menu is doubly unusable here: it is positioned as though the
-    # sidebar were an ordinary window, and its clipboard items go through the selection
-    # the compositor withholds from layer surfaces. Ours replaces it entirely.
+    # A menu is its own surface, and the compositor places surfaces parented to a layer
+    # shell one as though it were an ordinary window, which lands them off the sidebar
+    # entirely. A popover is drawn inside the parent window instead, so it cannot be
+    # misplaced. Its actions also route through wl-clipboard, which GTK's menu did not.
     def _on_button_press(self, _widget, event):
         if event.button != 3:
             return False
 
-        menu = Gtk.Menu()
-        menu.attach_to_widget(self.view, None)
+        popover = Gtk.Popover.new(self.view)
+        popover.set_constrain_to(Gtk.PopoverConstraint.WINDOW)
+        popover.set_position(Gtk.PositionType.BOTTOM)
+
+        where = Gdk.Rectangle()
+        where.x, where.y, where.width, where.height = int(event.x), int(event.y), 1, 1
+        popover.set_pointing_to(where)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        box.set_border_width(6)
         has_selection = bool(self.buffer.get_selection_bounds())
 
-        for label, handler, sensitive in (
-            ("Cut", lambda _i: self._copy(cut=True), has_selection),
-            ("Copy", lambda _i: self._copy(), has_selection),
-            ("Paste", lambda _i: self._paste(), True),
-            (None, None, None),
-            ("Select All", lambda _i: self.buffer.select_range(*self.buffer.get_bounds()), True),
-        ):
-            if label is None:
-                menu.append(Gtk.SeparatorMenuItem())
-                continue
-            item = Gtk.MenuItem(label=label)
-            item.set_sensitive(sensitive)
-            item.connect("activate", handler)
-            menu.append(item)
+        def add(label, handler, sensitive):
+            button = Gtk.Button(label=label, xalign=0.0)
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.set_sensitive(sensitive)
 
-        menu.connect("selection-done", lambda m: m.destroy())
-        menu.show_all()
-        menu.popup_at_pointer(event)
+            def clicked(_b):
+                popover.popdown()
+                handler()
+
+            button.connect("clicked", clicked)
+            box.pack_start(button, False, False, 0)
+
+        add("Cut", lambda: self._copy(cut=True), has_selection)
+        add("Copy", lambda: self._copy(), has_selection)
+        add("Paste", self._paste, True)
+        box.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 2)
+        add("Select All", lambda: self.buffer.select_range(*self.buffer.get_bounds()), True)
+
+        popover.add(box)
+        popover.connect("closed", lambda p: GLib.idle_add(p.destroy))
+        box.show_all()
+        popover.popup()
         return True
 
     def _paste(self):
