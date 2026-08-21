@@ -479,6 +479,7 @@ class Sidebar(Gtk.Window):
 
         box.pack_start(footer, False, False, 0)
 
+        self.view.connect("button-press-event", self._on_button_press)
         self.connect("key-press-event", self._on_key_press)
         self.connect("size-allocate", lambda *_: self._apply_input_region())
         self.connect("delete-event", lambda *_: self.hide() or True)
@@ -736,6 +737,37 @@ class Sidebar(Gtk.Window):
             LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.ON_DEMAND)
             return True
         return False
+
+    # GTK's own context menu is doubly unusable here: it is positioned as though the
+    # sidebar were an ordinary window, and its clipboard items go through the selection
+    # the compositor withholds from layer surfaces. Ours replaces it entirely.
+    def _on_button_press(self, _widget, event):
+        if event.button != 3:
+            return False
+
+        menu = Gtk.Menu()
+        menu.attach_to_widget(self.view, None)
+        has_selection = bool(self.buffer.get_selection_bounds())
+
+        for label, handler, sensitive in (
+            ("Cut", lambda _i: self._copy(cut=True), has_selection),
+            ("Copy", lambda _i: self._copy(), has_selection),
+            ("Paste", lambda _i: self._paste(), True),
+            (None, None, None),
+            ("Select All", lambda _i: self.buffer.select_range(*self.buffer.get_bounds()), True),
+        ):
+            if label is None:
+                menu.append(Gtk.SeparatorMenuItem())
+                continue
+            item = Gtk.MenuItem(label=label)
+            item.set_sensitive(sensitive)
+            item.connect("activate", handler)
+            menu.append(item)
+
+        menu.connect("selection-done", lambda m: m.destroy())
+        menu.show_all()
+        menu.popup_at_pointer(event)
+        return True
 
     def _paste(self):
         def done(ok, text):
