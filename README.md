@@ -10,7 +10,7 @@ A Wayland session whose compositor implements `zwlr_layer_shell_v1`. Cinnamon's 
 it (version 4), so Cinnamon on Wayland works. **X11 sessions cannot run this** — layer-shell does
 not exist there, and the app exits with a message rather than opening an undockable window.
 
-Dependencies are GTK 3, `gtk-layer-shell`, PyGObject and pycairo.
+Dependencies are GTK 3, `gtk-layer-shell`, PyGObject, pycairo and `wl-clipboard`.
 
 ### With Nix
 
@@ -56,6 +56,12 @@ Copy the desktop entry, editing `Exec=` if the project lives somewhere else:
 - **Escape** hands the keyboard straight back to the window underneath.
 - **Ctrl+S** saves immediately; otherwise the note saves shortly after you stop typing.
 - **Tab** indents inside the note.
+- **Ctrl+C**, **Ctrl+X** and **Ctrl+V** cut, copy and paste.
+
+Clipboard keys are handled by the app rather than by GTK, because Muffin does not offer the
+clipboard selection to layer-shell surfaces: GTK's own paste finds nothing to read. They shell out
+to `wl-clipboard`, which talks to the compositor directly. Drag and drop is a separate protocol and
+works normally.
 
 The footer shows the word and character count, reads `- unsaved` from the moment you type until the
 write lands, then flashes **Saved**. The gear button beside it opens the settings.

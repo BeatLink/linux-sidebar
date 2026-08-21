@@ -83,6 +83,33 @@ def log(message):
     print("[sidebar-scratchpad] %s" % message, file=sys.stderr)
 
 
+def run_argv(argv, stdin, callback):
+    """Runs a command with no shell, handing its standard output to the callback."""
+    flags = Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
+    if stdin is not None:
+        flags |= Gio.SubprocessFlags.STDIN_PIPE
+
+    def finished(process, result):
+        try:
+            ok, out, err = process.communicate_utf8_finish(result)
+        except GLib.Error as error:
+            log("%s errored: %s" % (argv[0], error.message))
+            callback(False, "")
+            return
+        if not process.get_successful():
+            log("%s failed: %s" % (argv[0], (err or "").strip()))
+            callback(False, "")
+            return
+        callback(True, out or "")
+
+    try:
+        process = Gio.Subprocess.new(argv, flags)
+        process.communicate_utf8_async(stdin, None, finished)
+    except GLib.Error as error:
+        log("could not run %s: %s" % (argv[0], error.message))
+        callback(False, "")
+
+
 class Config(dict):
     """The settings file, created with the defaults the first time it is read."""
 
@@ -690,6 +717,18 @@ class Sidebar(Gtk.Window):
         if ctrl and key in ("s", "S"):
             self.save_note(announce=True)
             return True
+        # Muffin does not offer the clipboard selection to layer-shell surfaces, so GTK's
+        # own cut, copy and paste have nothing to read. wl-clipboard talks to the
+        # compositor directly and does.
+        if ctrl and key in ("v", "V"):
+            self._paste()
+            return True
+        if ctrl and key in ("c", "C"):
+            self._copy()
+            return True
+        if ctrl and key in ("x", "X"):
+            self._copy(cut=True)
+            return True
         if key == "Escape":
             # Dropping to NONE and back releases the keyboard to whatever was focused
             # before, while leaving the surface clickable to take it again.
@@ -697,6 +736,33 @@ class Sidebar(Gtk.Window):
             LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.ON_DEMAND)
             return True
         return False
+
+    def _paste(self):
+        def done(ok, text):
+            if not ok:
+                self._flash("Could not read the clipboard")
+                return
+            if not text:
+                return
+            self.buffer.delete_selection(True, True)
+            self.buffer.insert_at_cursor(text)
+
+        run_argv(["wl-paste", "--no-newline"], None, done)
+
+    def _copy(self, cut=False):
+        bounds = self.buffer.get_selection_bounds()
+        if not bounds:
+            return
+        start, end = bounds
+        text = self.buffer.get_text(start, end, False)
+
+        def done(ok, _out):
+            if not ok:
+                self._flash("Could not reach the clipboard")
+
+        run_argv(["wl-copy"], text, done)
+        if cut:
+            self.buffer.delete(start, end)
 
     # Visibility -----------------------------------------------------------------------
 

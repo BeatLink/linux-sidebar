@@ -6,6 +6,7 @@
     gtk-layer-shell,
     gobject-introspection,
     wrapGAppsHook3,
+    wl-clipboard,
 }:
 
 let
@@ -34,6 +35,12 @@ stdenvNoCC.mkDerivation {
     ];
 
     dontBuild = true;
+
+    # Cut, copy and paste go through wl-clipboard, since the compositor does not offer
+    # the clipboard selection to layer-shell surfaces.
+    preFixup = ''
+        gappsWrapperArgs+=(--prefix PATH : ${lib.makeBinPath [ wl-clipboard ]})
+    '';
 
     installPhase = ''
         runHook preInstall
