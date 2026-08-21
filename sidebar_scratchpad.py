@@ -429,6 +429,7 @@ class Sidebar(Gtk.Window):
         self._status_source = 0
         self._reload_source = 0
         self._settings_window = None
+        self._menu = None
 
         self._build()
         self._init_layer_shell()
@@ -462,7 +463,11 @@ class Sidebar(Gtk.Window):
         scroller.set_name("note-frame")
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.add(self.view)
-        box.pack_start(scroller, True, True, 0)
+
+        self.overlay = Gtk.Overlay()
+        self.overlay.add(scroller)
+        self.overlay.add_overlay(self._build_menu())
+        box.pack_start(self.overlay, True, True, 0)
 
         footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self.status = Gtk.Label(xalign=0.0)
@@ -480,6 +485,7 @@ class Sidebar(Gtk.Window):
         box.pack_start(footer, False, False, 0)
 
         self.view.connect("button-press-event", self._on_button_press)
+        self._menu.hide()
         self.connect("key-press-event", self._on_key_press)
         self.connect("size-allocate", lambda *_: self._apply_input_region())
         self.connect("delete-event", lambda *_: self.hide() or True)
@@ -744,43 +750,57 @@ class Sidebar(Gtk.Window):
     # misplaced. Its actions also route through wl-clipboard, which GTK's menu did not.
     def _on_button_press(self, _widget, event):
         if event.button != 3:
+            if self._menu is not None and self._menu.get_visible():
+                self._menu.hide()
             return False
 
-        popover = Gtk.Popover.new(self.view)
-        popover.set_constrain_to(Gtk.PopoverConstraint.WINDOW)
-        popover.set_position(Gtk.PositionType.BOTTOM)
-
-        where = Gdk.Rectangle()
-        where.x, where.y, where.width, where.height = int(event.x), int(event.y), 1, 1
-        popover.set_pointing_to(where)
-
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        box.set_border_width(6)
         has_selection = bool(self.buffer.get_selection_bounds())
+        self._menu_items["Cut"].set_sensitive(has_selection)
+        self._menu_items["Copy"].set_sensitive(has_selection)
 
-        def add(label, handler, sensitive):
+        # Placed by margin inside the overlay, clamped so it cannot run off the edge.
+        width, height = self._menu.get_preferred_size()[1].width, self._menu.get_preferred_size()[1].height
+        room_x = max(0, self.overlay.get_allocated_width() - width)
+        room_y = max(0, self.overlay.get_allocated_height() - height)
+        self._menu.set_margin_start(min(int(event.x), room_x))
+        self._menu.set_margin_top(min(int(event.y), room_y))
+        self._menu.set_no_show_all(False)
+        self._menu.show_all()
+        self._menu.set_no_show_all(True)
+        return True
+
+    # Anything drawn in its own surface -- a menu, a popover -- is placed by the
+    # compositor as though the sidebar were an ordinary window, and never lands on it.
+    # An overlay child is part of this surface, so it simply cannot go astray.
+    def _build_menu(self):
+        menu = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        menu.set_name("note-menu")
+        menu.set_halign(Gtk.Align.START)
+        menu.set_valign(Gtk.Align.START)
+        menu.set_border_width(6)
+        # show_all on the window must not reveal it; it is shown only on right-click.
+        menu.set_no_show_all(True)
+        self._menu = menu
+        self._menu_items = {}
+
+        def add(label, handler):
             button = Gtk.Button(label=label, xalign=0.0)
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.set_sensitive(sensitive)
 
-            def clicked(_b):
-                popover.popdown()
+            def clicked(_button):
+                menu.hide()
                 handler()
 
             button.connect("clicked", clicked)
-            box.pack_start(button, False, False, 0)
+            menu.pack_start(button, False, False, 0)
+            self._menu_items[label] = button
 
-        add("Cut", lambda: self._copy(cut=True), has_selection)
-        add("Copy", lambda: self._copy(), has_selection)
-        add("Paste", self._paste, True)
-        box.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 2)
-        add("Select All", lambda: self.buffer.select_range(*self.buffer.get_bounds()), True)
-
-        popover.add(box)
-        popover.connect("closed", lambda p: GLib.idle_add(p.destroy))
-        box.show_all()
-        popover.popup()
-        return True
+        add("Cut", lambda: self._copy(cut=True))
+        add("Copy", lambda: self._copy())
+        add("Paste", self._paste)
+        menu.pack_start(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL), False, False, 2)
+        add("Select All", lambda: self.buffer.select_range(*self.buffer.get_bounds()))
+        return menu
 
     def _paste(self):
         def done(ok, text):

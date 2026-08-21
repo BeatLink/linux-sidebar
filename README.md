@@ -63,6 +63,11 @@ clipboard selection to layer-shell surfaces: GTK's own paste finds nothing to re
 to `wl-clipboard`, which talks to the compositor directly. Drag and drop is a separate protocol and
 works normally.
 
+Right-click opens the same actions as a menu. It is drawn as an overlay widget inside the sidebar
+rather than as a menu or a popover, because anything in its own surface is placed by the compositor
+as though the sidebar were an ordinary window: a `GtkMenu` opened well off the sidebar, and a
+`GtkPopover` reported itself visible and correctly sized while never appearing at all.
+
 The footer shows the word and character count, reads `- unsaved` from the moment you type until the
 write lands, then flashes **Saved**. The gear button beside it opens the settings.
 
