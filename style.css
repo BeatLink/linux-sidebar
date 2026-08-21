@@ -1,0 +1,22 @@
+/* Colours are left to the GTK theme so the sidebar matches the rest of the desktop.
+   Only the shape is set here. */
+
+#sidebar-scratchpad {
+    background-color: @theme_bg_color;
+    color: @theme_fg_color;
+}
+
+#note-frame {
+    border: 1px solid alpha(@theme_fg_color, 0.25);
+    border-radius: 6px;
+}
+
+#note-frame text {
+    background-color: transparent;
+}
+
+#note-status {
+    padding: 2px;
+    font-size: 0.85em;
+    color: alpha(@theme_fg_color, 0.6);
+}
