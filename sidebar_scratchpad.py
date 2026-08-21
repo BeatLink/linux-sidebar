@@ -725,6 +725,8 @@ class Application(Gtk.Application):
                          flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
         self.window = None
         self.config = None
+        # Distinguishes this process's own launch from a later one asking to be revealed.
+        self._first_command_line = True
         self.add_main_option("toggle", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
                              "Show or hide the sidebar", None)
         self.add_main_option("show", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
@@ -786,7 +788,12 @@ class Application(Gtk.Application):
             self.window.apply_config()
             self.window.load_note(force=self.window.store.identity() != identity)
         else:
-            self.activate()
+            # A launch with no options reveals the sidebar, except for the very first one
+            # when start_hidden asked for it to stay out of the way.
+            first = self._first_command_line
+            if not (first and self.config["start_hidden"]):
+                self.activate()
+        self._first_command_line = False
         return 0
 
     def do_activate(self):
