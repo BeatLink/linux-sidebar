@@ -1,21 +1,39 @@
 /* Colours are left to the GTK theme so the sidebar matches the rest of the desktop.
-   Only the shape is set here. */
+   Only the shape is set here.
 
-#sidebar-scratchpad {
+   Every rule is repeated for :backdrop, the state GTK gives a window without keyboard
+   focus. A dock rarely holds focus, so the theme's dimmed backdrop colours would leave
+   it greyed out almost all the time. */
+
+#sidebar-scratchpad,
+#sidebar-scratchpad:backdrop {
     background-color: @theme_bg_color;
     color: @theme_fg_color;
 }
 
-#note-frame {
+#note-frame,
+#note-frame:backdrop {
     border: 1px solid alpha(@theme_fg_color, 0.25);
     border-radius: 6px;
 }
 
-#note-frame text {
+#note-frame text,
+#note-frame text:backdrop,
+#note-frame textview,
+#note-frame textview:backdrop {
     background-color: transparent;
+    color: @theme_fg_color;
+    caret-color: @theme_fg_color;
 }
 
-#note-status {
+#note-frame text selection,
+#note-frame text selection:backdrop {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+#note-status,
+#note-status:backdrop {
     padding: 2px;
     font-size: 0.85em;
     color: alpha(@theme_fg_color, 0.6);
