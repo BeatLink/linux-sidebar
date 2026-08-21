@@ -121,8 +121,8 @@ So neither layer is free:
 - `top` draws above everything, which is what a dock wants, but also above the panels. An auto-hide
   panel reserves no space of its own, so it appears underneath the sidebar and looks clipped.
 - `bottom` lets the panels draw over the sidebar, but any window that ignores the exclusive zone
-  then covers it. An XWayland window that was already maximised when the sidebar started is the
-  usual offender, since it keeps its old full-width geometry.
+  then covers it. The usual offender is a window that was already maximised when the sidebar
+  started: it keeps its old full-width geometry until something re-maximises it.
 
 `auto` chooses `bottom` whenever the sidebar reserves space, and that is usually what you want: the
 panels slide over the sidebar by themselves, so an auto-hide panel is handled without the sidebar
@@ -131,7 +131,8 @@ out, so being on the lower layer costs nothing.
 
 The one artifact is windows that were already maximised when the sidebar started. They keep their
 old full-width geometry and so overlap the strip until they are re-maximised; windows maximised
-afterwards fit the reserved area correctly. Autostarting the sidebar at login avoids it entirely.
+afterwards fit the reserved area correctly. Autostarting the sidebar at login avoids it entirely,
+since nothing is maximised yet when it claims its zone.
 
 `margin_top` and `margin_bottom` exist for the `top` layer, where the sidebar would otherwise cover
 the panels: set one to a panel's height and the sidebar stops short of it, shrinking the reserved
