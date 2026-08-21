@@ -7,6 +7,7 @@
     gobject-introspection,
     wrapGAppsHook3,
     wl-clipboard,
+    xclip,
 }:
 
 let
@@ -39,7 +40,7 @@ stdenvNoCC.mkDerivation {
     # Cut, copy and paste go through wl-clipboard, since the compositor does not offer
     # the clipboard selection to layer-shell surfaces.
     preFixup = ''
-        gappsWrapperArgs+=(--prefix PATH : ${lib.makeBinPath [ wl-clipboard ]})
+        gappsWrapperArgs+=(--prefix PATH : ${lib.makeBinPath [ wl-clipboard xclip ]})
     '';
 
     installPhase = ''

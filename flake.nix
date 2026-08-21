@@ -42,6 +42,7 @@
                             pkgs.gtk-layer-shell
                             pkgs.gobject-introspection
                             pkgs.wl-clipboard
+                            pkgs.xclip
                             (pkgs.python3.withPackages (ps: [
                                 ps.pygobject3
                                 ps.pycairo

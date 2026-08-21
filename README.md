@@ -10,7 +10,7 @@ A Wayland session whose compositor implements `zwlr_layer_shell_v1`. Cinnamon's 
 it (version 4), so Cinnamon on Wayland works. **X11 sessions cannot run this** — layer-shell does
 not exist there, and the app exits with a message rather than opening an undockable window.
 
-Dependencies are GTK 3, `gtk-layer-shell`, PyGObject, pycairo and `wl-clipboard`.
+Dependencies are GTK 3, `gtk-layer-shell`, PyGObject, pycairo, `xclip` and `wl-clipboard`.
 
 ### With Nix
 
@@ -58,10 +58,15 @@ Copy the desktop entry, editing `Exec=` if the project lives somewhere else:
 - **Tab** indents inside the note.
 - **Ctrl+C**, **Ctrl+X** and **Ctrl+V** cut, copy and paste.
 
-Clipboard keys are handled by the app rather than by GTK, because Muffin does not offer the
-clipboard selection to layer-shell surfaces: GTK's own paste finds nothing to read. They shell out
-to `wl-clipboard`, which talks to the compositor directly. Drag and drop is a separate protocol and
-works normally.
+Clipboard keys are handled by the app rather than by GTK, and go through `xclip` rather than
+`wl-clipboard`. Muffin offers no clipboard selection to layer-shell surfaces, so GTK's own paste
+finds nothing to read, and it implements no data-control protocol, so `wl-paste` and `wl-copy` have
+to open a surface and take the keyboard to reach the selection at all — which hands focus to the
+previously focused window when they exit. An X11 client reaches the same selection, which Muffin
+bridges, over the X protocol and never touches Wayland focus. `wl-clipboard` remains as a fallback
+where there is no X server, with the focus jump as its cost.
+
+Drag and drop is a separate protocol and works normally.
 
 Right-click opens the same actions as a menu. It is drawn as an overlay widget inside the sidebar
 rather than as a menu or a popover, because anything in its own surface is placed by the compositor

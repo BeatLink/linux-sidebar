@@ -83,6 +83,23 @@ def log(message):
     print("[sidebar-scratchpad] %s" % message, file=sys.stderr)
 
 
+def spawn_with_stdin(argv, text):
+    """Starts a command, feeds it text and leaves it running.
+
+    An X selection owner has to stay alive to serve the data, so this cannot wait for
+    the process to exit. It is replaced the next time anything takes the selection.
+    """
+    try:
+        process = Gio.Subprocess.new(argv, Gio.SubprocessFlags.STDIN_PIPE)
+        stream = process.get_stdin_pipe()
+        stream.write_all(text.encode(), None)
+        stream.close(None)
+        return True
+    except GLib.Error as error:
+        log("could not run %s: %s" % (argv[0], error.message))
+        return False
+
+
 def run_argv(argv, stdin, callback):
     """Runs a command with no shell, handing its standard output to the callback."""
     flags = Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
@@ -802,17 +819,32 @@ class Sidebar(Gtk.Window):
         add("Select All", lambda: self.buffer.select_range(*self.buffer.get_bounds()))
         return menu
 
+    # Read through XWayland by preference. This compositor has no data-control protocol,
+    # so wl-paste has to open a surface and take the keyboard to read the selection, and
+    # the focus it hands back goes to the previously focused window rather than to us.
+    # An X11 client reads the same selection, which Muffin bridges, over the X protocol
+    # and never touches Wayland focus.
     def _paste(self):
-        def done(ok, text):
-            if not ok:
-                self._flash("Could not read the clipboard")
-                return
+        def insert(text):
             if not text:
                 return
             self.buffer.delete_selection(True, True)
             self.buffer.insert_at_cursor(text)
 
-        run_argv(["wl-paste", "--no-newline"], None, done)
+        def through_wayland(ok, text):
+            if not ok:
+                self._flash("Could not read the clipboard")
+                return
+            insert(text)
+
+        def through_x(ok, text):
+            if ok:
+                insert(text)
+                return
+            # No X server or no xclip: fall back, at the cost of the focus jump.
+            run_argv(["wl-paste", "--no-newline"], None, through_wayland)
+
+        run_argv(["xclip", "-o", "-selection", "clipboard"], None, through_x)
 
     def _copy(self, cut=False):
         bounds = self.buffer.get_selection_bounds()
@@ -821,11 +853,15 @@ class Sidebar(Gtk.Window):
         start, end = bounds
         text = self.buffer.get_text(start, end, False)
 
-        def done(ok, _out):
+        def through_wayland(ok, _out):
             if not ok:
                 self._flash("Could not reach the clipboard")
 
-        run_argv(["wl-copy"], text, done)
+        # xclip owns the X selection, which Muffin bridges to Wayland. Unlike wl-copy it
+        # needs no Wayland surface, so it cannot take the keyboard away from the note.
+        if not spawn_with_stdin(["xclip", "-i", "-selection", "clipboard"], text):
+            run_argv(["wl-copy"], text, through_wayland)
+
         if cut:
             self.buffer.delete(start, end)
 
