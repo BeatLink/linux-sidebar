@@ -7,16 +7,16 @@ self:
 }:
 
 let
-    cfg = config.programs.sidebar-scratchpad;
+    cfg = config.programs.linux-sidebar;
 in
 {
-    options.programs.sidebar-scratchpad = {
-        enable = lib.mkEnableOption "the sidebar scratchpad, a docked note pane";
+    options.programs.linux-sidebar = {
+        enable = lib.mkEnableOption "the sidebar, a docked strip of plugins";
 
         package = lib.mkOption {
             type = lib.types.package;
-            default = self.packages.${pkgs.stdenv.hostPlatform.system}.sidebar-scratchpad;
-            defaultText = lib.literalMD "the `sidebar-scratchpad` package from this flake";
+            default = self.packages.${pkgs.stdenv.hostPlatform.system}.linux-sidebar;
+            defaultText = lib.literalMD "the `linux-sidebar` package from this flake";
             description = "The package providing the sidebar.";
         };
 
@@ -30,12 +30,12 @@ in
     config = lib.mkIf cfg.enable {
         home.packages = [ cfg.package ];
 
-        xdg.configFile."autostart/sidebar-scratchpad.desktop" = lib.mkIf cfg.autostart {
-            source = "${cfg.package}/share/applications/sidebar-scratchpad.desktop";
+        xdg.configFile."autostart/linux-sidebar.desktop" = lib.mkIf cfg.autostart {
+            source = "${cfg.package}/share/applications/linux-sidebar.desktop";
         };
 
-        # The settings and the note itself both live in ~/.config/sidebar-scratchpad and are
-        # written by the app, so neither is managed here: a store symlink would be read-only
-        # and the settings window could not save. Persist that directory instead.
+        # The settings, the layout and the notes all live in ~/.config/linux-sidebar and are
+        # written by the app, so none of them is managed here: a store symlink would be
+        # read-only and the settings window could not save. Persist that directory instead.
     };
 }

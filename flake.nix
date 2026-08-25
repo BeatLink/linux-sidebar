@@ -1,5 +1,5 @@
 {
-    description = "A full-height note scratchpad docked to the side of the screen";
+    description = "A docked sidebar of plugins for any Linux desktop";
 
     inputs = {
         nixpkgs = {
@@ -24,8 +24,8 @@
                     pkgs = pkgsFor system;
                 in
                 {
-                    sidebar-scratchpad = pkgs.callPackage ./package.nix { };
-                    default = self.packages.${system}.sidebar-scratchpad;
+                    linux-sidebar = pkgs.callPackage ./package.nix { };
+                    default = self.packages.${system}.linux-sidebar;
                 }
             );
 
@@ -40,12 +40,16 @@
                         packages = [
                             pkgs.gtk3
                             pkgs.gtk-layer-shell
+                            pkgs.webkitgtk_4_1
                             pkgs.gobject-introspection
                             pkgs.wl-clipboard
                             pkgs.xclip
+                            pkgs.hunspell
+                            pkgs.hunspellDicts.en_US
                             (pkgs.python3.withPackages (ps: [
                                 ps.pygobject3
                                 ps.pycairo
+                                ps.xlib
                             ]))
                         ];
                     };
@@ -53,8 +57,8 @@
             );
 
             homeManagerModules = {
-                sidebar-scratchpad = import ./home-manager.nix self;
-                default = self.homeManagerModules.sidebar-scratchpad;
+                linux-sidebar = import ./home-manager.nix self;
+                default = self.homeManagerModules.linux-sidebar;
             };
 
             formatter = forAllSystems (system: (pkgsFor system).nixfmt-tree);

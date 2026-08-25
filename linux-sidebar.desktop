@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Linux Sidebar
+Comment=A docked sidebar of plugins for any Linux desktop
+Exec=linux-sidebar
+Icon=view-sidebar-symbolic
+Terminal=false
+Categories=Utility;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
