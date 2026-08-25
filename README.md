@@ -83,6 +83,7 @@ The dependencies are GTK 3, PyGObject, pycairo and, for each thing they enable:
 | `gtk-layer-shell` | No layer-shell docking on Wayland |
 | `python-xlib` | No space reservation on X11 |
 | `webkitgtk` 4.1 | The note falls back to a plain text view of its source |
+| `libsoup` 3 | The Trilium plugin cannot reach its server |
 | `hunspell` and a dictionary | No spell checking in the note |
 | `xclip` or `wl-clipboard` | No clipboard where the compositor withholds it from a docked surface |
 
@@ -106,6 +107,7 @@ Three plugins are built in:
 | Plugin | What it is |
 | --- | --- |
 | `note` | A rich text note, edited in CKEditor 5 |
+| `trilium` | The same editor, over a note kept in [Trilium](https://github.com/TriliumNext/Trilium) |
 | `clock` | The time and the date, in whatever `strftime` format you give it |
 | `command` | The standard output of a shell command, rerun on a timer |
 
@@ -212,6 +214,34 @@ Where the session hands a docked surface the clipboard normally, GTK's own is us
 is needed; the settings window says which it is using. Drag and drop is a separate protocol and
 works normally.
 
+## Trilium
+
+The `trilium` plugin is the same editor over a note that lives in Trilium, reached through
+ETAPI. A Trilium text note is HTML and so is this editor's output, so the same note can be
+edited from either end and neither has to convert anything.
+
+ETAPI offers no way to push a change to a client, so the sidebar polls: every `poll_interval`
+seconds it reads the note's metadata, which is cheap, and only fetches the content once the
+note's blob has actually moved. An edit made in Trilium therefore turns up here on its own,
+within one poll. A poll never overwrites a note with unsaved edits in it, and the revision a
+save produces is recorded, so the sidebar never mistakes its own write for somebody else's.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `server_url` | `http://localhost:37840` | Where Trilium is |
+| `note_id` | `root` | Which note to edit; copy the id from Trilium's note info |
+| `token` | empty | An ETAPI token, made under *Options → ETAPI* |
+| `token_command` | empty | A command printing the token, for a secret you would rather not keep here |
+| `poll_interval` | `15` | Seconds between checks, 0 to never check |
+| `title_in_header` | `true` | Put Trilium's own title in the section header |
+| `allow_insecure_tls` | `false` | Accept a certificate from a private authority |
+
+`token_command` is the one to use where the token is already managed: `cat
+/run/secrets/trilium_etapi_token`, `pass show trilium/etapi` and so on. It runs once and the
+token is kept for the session.
+
+This needs `libsoup` 3. Without it the plugin loads but every request fails and says so.
+
 ## Settings
 
 Use the gear button in the footer, or `linux-sidebar --settings`. Every change applies
@@ -269,6 +299,7 @@ A second launch talks to the running instance rather than starting another.
 | `linux-sidebar` | The launcher |
 | `linux_sidebar/app.py` | The application and its command line |
 | `linux_sidebar/config.py` | The settings file and the layout |
+| `linux_sidebar/net.py` | Asynchronous HTTP, for plugins that talk to a server |
 | `linux_sidebar/docking/` | One module per way of docking |
 | `linux_sidebar/plugins/` | The plugin API, the registry and the built-in plugins |
 | `linux_sidebar/ui/` | The sidebar window, its sections and the settings window |

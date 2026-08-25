@@ -5,6 +5,7 @@
     gtk3,
     gtk-layer-shell,
     webkitgtk_4_1,
+    libsoup_3,
     gobject-introspection,
     wrapGAppsHook3,
     wl-clipboard,
@@ -37,6 +38,7 @@ stdenvNoCC.mkDerivation {
         gtk3
         gtk-layer-shell
         webkitgtk_4_1
+        libsoup_3
         python
     ];
 

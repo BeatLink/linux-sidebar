@@ -41,6 +41,7 @@
                             pkgs.gtk3
                             pkgs.gtk-layer-shell
                             pkgs.webkitgtk_4_1
+                            pkgs.libsoup_3
                             pkgs.gobject-introspection
                             pkgs.wl-clipboard
                             pkgs.xclip
