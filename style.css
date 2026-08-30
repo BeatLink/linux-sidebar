@@ -110,3 +110,27 @@
     padding: 6px 8px;
     font-size: 0.9em;
 }
+
+#timer,
+#timer:backdrop {
+    padding: 6px;
+}
+
+#timer-time,
+#timer-time:backdrop {
+    font-size: 1.9em;
+    font-feature-settings: "tnum";
+}
+
+#timer-time.finished,
+#timer-time.finished:backdrop {
+    color: @theme_selected_bg_color;
+    font-weight: bold;
+}
+
+#timer-presets button,
+#timer-presets button:backdrop {
+    padding: 2px 4px;
+    min-height: 0;
+    font-size: 0.85em;
+}

@@ -102,7 +102,7 @@ filling the tab, which the note is, takes whatever height the sections above and
 The tab bar appears once there is more than one tab. **Ctrl+Tab** and **Ctrl+Shift+Tab** move
 between them, as do `--next-tab` and `--previous-tab`.
 
-Three plugins are built in:
+Five plugins are built in:
 
 | Plugin | What it is |
 | --- | --- |
@@ -110,6 +110,7 @@ Three plugins are built in:
 | `trilium` | The same editor, over a note kept in [Trilium](https://github.com/TriliumNext/Trilium) |
 | `clock` | The time and the date, in whatever `strftime` format you give it |
 | `command` | The standard output of a shell command, rerun on a timer |
+| `timer` | A countdown with presets, which runs a command of your choosing at zero |
 
 ### Writing one
 
@@ -241,6 +242,24 @@ save produces is recorded, so the sidebar never mistakes its own write for someb
 token is kept for the session.
 
 This needs `libsoup` 3. Without it the plugin loads but every request fails and says so.
+
+## The timer
+
+A countdown, with a row of preset lengths above **Start** and **Reset**. A preset restarts the
+countdown at that length straight away; **Start** uses the configured length, and becomes
+**Pause**, which keeps the time that is left.
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `duration` | `25` | The length **Start** and **Reset** use, in minutes |
+| `presets` | `5, 10, 25` | The preset buttons, as a comma separated list of minutes, up to six |
+| `count_in_title` | on | Shows the time left beside the section's title, so a folded timer still counts |
+| `alert_command` | `notify-send "Timer" "Time is up"` | Run through `sh -c` when the countdown reaches zero |
+| `alert_message` | `The timer finished` | Shown in the footer for a moment at zero, or blank for nothing |
+
+The countdown is kept against the monotonic clock rather than counted in ticks, so it still
+finishes on time after the sidebar has been hidden or the machine has been busy. It does not
+survive quitting: a timer that was running starts again at its full length next time.
 
 ## Settings
 
