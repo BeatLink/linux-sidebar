@@ -53,11 +53,12 @@ class X11Backend(DockBackend):
         self.window.set_gravity(Gdk.Gravity.STATIC)
         self._apply_type_hint()
 
-    # A DOCK window stacks like a panel but some window managers refuse it the keyboard,
-    # which a sidebar you type in cannot do without.
+    # A window manager keeps NORMAL windows inside the work area, so a sidebar that reserves
+    # its own strip would be pushed straight back out of it; only DOCK is placed where asked.
+    # The escape hatch is for window managers that refuse a DOCK window the keyboard.
     def _apply_type_hint(self):
         """Applies the configured EWMH window type."""
-        dock = str(self.config.get("x11_window_type", "normal")).lower() == "dock"
+        dock = str(self.config.get("x11_window_type", "dock")).lower() == "dock"
         self.window.set_type_hint(Gdk.WindowTypeHint.DOCK if dock
                                   else Gdk.WindowTypeHint.NORMAL)
 
