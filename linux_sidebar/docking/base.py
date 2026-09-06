@@ -32,6 +32,9 @@ class DockBackend:
     def on_size_allocate(self):
         """Runs whenever the window's size changes."""
 
+    def take_focus(self):
+        """Takes the keyboard for the sidebar, where the session does not give it on a click."""
+
     def release_keyboard(self):
         """Hands the keyboard back to whatever was focused before, where the backend can."""
 

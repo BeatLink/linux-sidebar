@@ -22,6 +22,7 @@ class X11Backend(DockBackend):
 
     name = "x11"
     label = "X11 dock"
+    takes_focus_on_click = False
 
     @staticmethod
     def available():
@@ -128,6 +129,25 @@ class X11Backend(DockBackend):
             except Exception as error:
                 log("could not open the X display: %s" % error)
         return self._xdisplay
+
+    # A window manager hands a DOCK window the pointer but never the keyboard, so the click
+    # that focuses an ordinary window has to set the input focus itself.
+    def take_focus(self):
+        """Puts the keyboard on the sidebar, which a click on a dock does not do by itself."""
+        if self.window.is_active():
+            return
+        self.note_focus_gained()
+        display = self._connect()
+        xid = self._xid()
+        if display is None or xid is None:
+            return
+        try:
+            from Xlib import X
+            window = display.create_resource_object("window", xid)
+            window.set_input_focus(X.RevertToPointerRoot, X.CurrentTime)
+            display.flush()
+        except Exception as error:
+            log("could not take the focus: %s" % error)
 
     def note_focus_gained(self):
         """Remembers which window was active before the sidebar took the keyboard."""

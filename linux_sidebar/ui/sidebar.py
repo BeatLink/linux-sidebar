@@ -75,6 +75,14 @@ class Sidebar(Gtk.Window):
         self.connect("focus-in-event", lambda *_: self._on_focus_in())
         self.connect("delete-event", lambda *_: self.hide() or True)
 
+        # A capture-phase gesture is the only way to see the click, since the widget under it
+        # handles the event and it never reaches the window.
+        if not self.backend.takes_focus_on_click:
+            self._focus_click = Gtk.GestureMultiPress.new(self)
+            self._focus_click.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+            self._focus_click.set_button(0)
+            self._focus_click.connect("pressed", lambda *_: self.backend.take_focus())
+
     def build_layout(self):
         """Rebuilds every tab and section from the layout in the settings."""
         self.teardown_plugins()
