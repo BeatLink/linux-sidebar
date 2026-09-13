@@ -35,6 +35,7 @@ class X11Backend(DockBackend):
         self._xdisplay = None
         self._strut = None
         self._previous = None
+        self._unshadowed = False
 
     @property
     def reserves_space(self):
@@ -72,6 +73,29 @@ class X11Backend(DockBackend):
         self.window.move(x, y)
         self.window.set_keep_above(str(self.config["layer"]).lower() != "bottom")
         self._apply_strut()
+        self._drop_shadow()
+
+    # A window manager draws a dock a drop shadow and then leaves it out of a frame or two
+    # whenever a window below is maximised, which reads as a flicker down the sidebar's edge.
+    # Claiming frame extents, even empty ones, means the window says it draws its own edge.
+    def _drop_shadow(self):
+        """Asks the window manager not to draw a shadow around the strip."""
+        if self._unshadowed or xlib_display is None:
+            return
+        xid = self._xid()
+        if xid is None:
+            return
+        try:
+            display = self._connect()
+            if display is None:
+                return
+            window = display.create_resource_object("window", xid)
+            window.change_property(display.intern_atom("_GTK_FRAME_EXTENTS"),
+                                   Xatom.CARDINAL, 32, [0, 0, 0, 0])
+            display.flush()
+            self._unshadowed = True
+        except Exception as error:
+            log("could not drop the shadow: %s" % error)
 
     def on_realize(self):
         """Re-applies the placement once the window has a surface to place."""
