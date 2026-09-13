@@ -14,6 +14,12 @@ from .section import Section
 # How long a transient message such as "Saved" stays in the footer.
 STATUS_MS = 1500
 
+# How long to wait after an output change before re-docking, so the burst settles first.
+REDOCK_MS = 400
+
+# How often to check that the strip still fits the screen, for the changes nothing announces.
+DOCK_CHECK_MS = 2000
+
 
 class Sidebar(Gtk.Window):
     """The sidebar window, docked by whichever backend this session supports."""
@@ -29,11 +35,15 @@ class Sidebar(Gtk.Window):
         self._statuses = {}
         self._status_source = 0
         self._settings_window = None
+        self._redock_source = 0
+        self._dock_check_source = 0
+        self._docked = None
 
         self._build()
         self.backend.attach()
         self.build_layout()
         self.apply_config()
+        self._watch_outputs()
 
     # Layout ---------------------------------------------------------------------------------
 
@@ -181,6 +191,7 @@ class Sidebar(Gtk.Window):
         self._apply_input_region()
         self._apply_visibility()
         self._refresh_status()
+        self._docked = self._dock_state()
 
     def _apply_visibility(self):
         """Shows or hides the footer and the tab bar according to the settings."""
@@ -207,6 +218,53 @@ class Sidebar(Gtk.Window):
         region.subtract(cairo.Region(cairo.RectangleInt(x, 0, gap, gap)))
         region.subtract(cairo.Region(cairo.RectangleInt(x, height - gap, gap, gap)))
         surface.input_shape_combine_region(region, 0, 0)
+
+    # Docking ---------------------------------------------------------------------------------
+
+    # The strip is pinned to one monitor, so unplugging or rearranging outputs leaves it and
+    # the space it reserves describing a screen that is no longer there.
+    def _watch_outputs(self):
+        """Re-docks when the screen changes: by signal where there is one, by looking where not."""
+        display = Gdk.Display.get_default()
+        if display is not None:
+            for signal in ("monitor-added", "monitor-removed"):
+                display.connect(signal, lambda *_: self._schedule_redock())
+        screen = Gdk.Screen.get_default()
+        if screen is not None:
+            for signal in ("monitors-changed", "size-changed"):
+                screen.connect(signal, lambda *_: self._schedule_redock())
+        self._docked = self._dock_state()
+        self._dock_check_source = GLib.timeout_add(DOCK_CHECK_MS, self._check_dock)
+
+    # A panel appearing or changing height changes the work area the strip is measured from,
+    # and on X11 nothing reports that: GdkMonitor never notifies that its work area moved.
+    def _check_dock(self):
+        """Re-docks if the strip no longer belongs where it was put."""
+        state = self._dock_state()
+        if state != self._docked:
+            self._schedule_redock()
+        return True
+
+    def _dock_state(self):
+        """Returns where the strip belongs now, together with how many monitors there are."""
+        display = Gdk.Display.get_default()
+        count = display.get_n_monitors() if display is not None else 0
+        return count, self.backend.strip()
+
+    def _schedule_redock(self):
+        """Folds a burst of output changes into a single re-dock."""
+        if self._redock_source:
+            GLib.source_remove(self._redock_source)
+        self._redock_source = GLib.timeout_add(REDOCK_MS, self._redock)
+
+    def _redock(self):
+        """Places the strip where it belongs now and reclaims the space it needs there."""
+        self._redock_source = 0
+        log("the screen changed, re-docking")
+        self.backend.apply()
+        self._apply_input_region()
+        self._docked = self._dock_state()
+        return False
 
     def _on_size_allocate(self):
         """Keeps the input region in step with the window's size."""
@@ -366,6 +424,10 @@ class Sidebar(Gtk.Window):
         if self._status_source:
             GLib.source_remove(self._status_source)
             self._status_source = 0
+        for source in (self._dock_check_source, self._redock_source):
+            if source:
+                GLib.source_remove(source)
+        self._dock_check_source = self._redock_source = 0
         self.backend.shutdown()
 
 
