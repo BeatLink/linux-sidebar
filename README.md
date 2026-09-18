@@ -24,10 +24,10 @@ Set `dock_backend` to pin one rather than letting it choose.
 
 The strut needs `python-xlib`. Without it the sidebar still docks, but windows may sit under it.
 
-`x11_window_type` decides which EWMH type the window claims. `normal` is the default because
-every window manager lets you type into a normal window, while some refuse the keyboard to a
-`dock`. Choose `dock` if you would rather it stacked strictly like a panel and your window
-manager focuses docks.
+`x11_window_type` decides which EWMH type the window claims. `dock` is the default, since a
+window manager keeps a normal window inside the work area and so pushes the sidebar out of the
+strip it reserves for itself. Choose `normal` if your window manager refuses a dock the
+keyboard, at the cost of that reservation.
 
 ### On Wayland
 
@@ -277,7 +277,7 @@ hand; apply those changes with `linux-sidebar --reload`.
 | `width` | `380` | Width of the strip in pixels |
 | `monitor` | `-1` | Monitor index, or -1 for the one the pointer is on |
 | `dock_backend` | `"auto"` | `auto`, `layer-shell`, `x11` or `plain` |
-| `x11_window_type` | `"normal"` | EWMH window type on X11, `normal` or `dock` |
+| `x11_window_type` | `"dock"` | EWMH window type on X11, `dock` or `normal` |
 | `reserve_space` | `true` | Claim the strip so windows keep out |
 | `layer` | `"auto"` | Layer-shell layer: `auto`, `bottom` or `top` |
 | `margin_top` | `0` | Space held clear at the top edge, in pixels |
