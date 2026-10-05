@@ -1,15 +1,16 @@
-"""Reads the desktop's colours out of the GTK theme so the editor page can be painted to match."""
+"""Reads the sidebar's palette out of the style context so the editor page is painted to match."""
 
 from gi.repository import Gtk
 
-# Each entry is (CSS variable, theme colour name, fallback).
+# Each entry is (CSS variable, palette colour name, fallback). The palette is the one the
+# application defines, so the page follows whichever theme the sidebar itself is taking.
 COLOURS = [
-    ("--sidebar-bg", "theme_bg_color", "#f6f5f4"),
-    ("--sidebar-fg", "theme_fg_color", "#2e3436"),
-    ("--sidebar-base", "theme_base_color", "#ffffff"),
-    ("--sidebar-accent", "theme_selected_bg_color", "#3584e4"),
-    ("--sidebar-accent-fg", "theme_selected_fg_color", "#ffffff"),
-    ("--sidebar-link", "theme_selected_bg_color", "#1c71d8"),
+    ("--sidebar-bg", "sidebar_bg", "#f6f5f4"),
+    ("--sidebar-fg", "sidebar_fg", "#2e3436"),
+    ("--sidebar-base", "sidebar_base", "#ffffff"),
+    ("--sidebar-accent", "sidebar_selected_bg", "#3584e4"),
+    ("--sidebar-accent-fg", "sidebar_selected_fg", "#ffffff"),
+    ("--sidebar-link", "sidebar_selected_bg", "#1c71d8"),
 ]
 
 
@@ -21,7 +22,7 @@ def theme_css(widget, font_family, font_size, mono_family):
         found, rgba = context.lookup_color(colour)
         values.append("%s: %s;" % (name, _css_rgba(rgba) if found else fallback))
 
-    found, fg = context.lookup_color("theme_fg_color")
+    found, fg = context.lookup_color("sidebar_fg")
     values.append("--sidebar-border: %s;" % (_css_rgba(fg, 0.25) if found else "rgba(0,0,0,.25)"))
     values.append("--sidebar-hover: %s;" % (_css_rgba(fg, 0.12) if found else "rgba(0,0,0,.12)"))
     values.append("--sidebar-font-family: %s;" % font_family)

@@ -45,6 +45,27 @@ panels then slide over the sidebar by themselves and the exclusive zone still ke
 out, so being on the lower layer costs nothing. `margin_top` and `margin_bottom` exist for the
 `top` layer: set one to a panel's height and the sidebar stops short of it.
 
+## Colours
+
+The sidebar sets only its own shape and takes every colour from a theme, so it looks like part
+of the desktop rather than an application window sitting on it. `theme_source` says which theme:
+
+| Value | Where the colours come from |
+| --- | --- |
+| `auto` | The desktop shell's theme, falling back to the GTK theme when there is none |
+| `shell` | The desktop shell's theme |
+| `gtk` | The GTK theme |
+
+The shell's theme is the one that paints the panel: Cinnamon's, read from the theme named in
+`org.cinnamon.theme name`, or GNOME Shell's from `org.gnome.shell.extensions.user-theme name`.
+The sidebar reads the panel's background and foreground and the menu's background and selection
+out of that stylesheet, and shades the rest from them. A shell theme written in a stylesheet the
+sidebar cannot find, GNOME Shell's built-in one in particular, leaves it on the GTK theme.
+
+Taking the panel's colours means the sidebar can end up darker or lighter than the GTK theme,
+and the widgets inside it that GTK paints by itself, such as scrollbars and buttons, still
+follow the GTK theme. Choose `gtk` if the two clash.
+
 ## Installing
 
 ### With Nix
@@ -282,6 +303,7 @@ hand; apply those changes with `linux-sidebar --reload`.
 | `layer` | `"auto"` | Layer-shell layer: `auto`, `bottom` or `top` |
 | `margin_top` | `0` | Space held clear at the top edge, in pixels |
 | `margin_bottom` | `0` | Space held clear at the bottom edge, in pixels |
+| `theme_source` | `"auto"` | Where the colours come from: `auto`, `shell` or `gtk` |
 | `opacity` | `1.0` | Whole-window opacity |
 | `hot_corner_gap` | `24` | Size of the corner squares cut out of the input region |
 | `start_hidden` | `false` | Start without showing the sidebar |

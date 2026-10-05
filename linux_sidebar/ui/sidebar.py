@@ -186,6 +186,9 @@ class Sidebar(Gtk.Window):
 
     def apply_config(self):
         """Applies the window settings, and the docking settings through the backend."""
+        application = self.get_application()
+        if application is not None:
+            application.load_style()
         self.backend.apply()
         Gtk.Widget.set_opacity(self, max(0.1, min(1.0, float(self.config["opacity"]))))
         self._apply_input_region()

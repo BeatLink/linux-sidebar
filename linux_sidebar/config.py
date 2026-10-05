@@ -20,6 +20,7 @@ DEFAULTS = {
     "layer": "auto",
     "margin_top": 0,
     "margin_bottom": 0,
+    "theme_source": "auto",
     "opacity": 1.0,
     "hot_corner_gap": 24,
     "start_hidden": False,
@@ -47,6 +48,9 @@ SPEC = [
         ("margin_bottom", "Bottom margin", "spin", (0, 400, 4)),
     ]),
     ("Appearance", [
+        ("theme_source", "Colours from", "combo",
+         [("auto", "The desktop shell, falling back to GTK"),
+          ("shell", "The desktop shell's theme"), ("gtk", "The GTK theme")]),
         ("opacity", "Opacity", "scale", (0.3, 1.0, 0.05)),
         ("tab_position", "Tab bar", "combo",
          [("top", "Top"), ("bottom", "Bottom"), ("hidden", "Hidden")]),

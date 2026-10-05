@@ -6,6 +6,7 @@ from gi.repository import Gdk, Gio, GLib, Gtk
 
 from . import APP_ID
 from .config import Config
+from .theme import palette_css
 from .ui.sidebar import Sidebar
 from .util import data_path, log
 
@@ -28,6 +29,7 @@ class Application(Gtk.Application):
         super().__init__(application_id=APP_ID,
                          flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
         self.window = None
+        self._provider = None
         self.config = None
         # Tells this process's own launch apart from a later one asking to be revealed.
         self._first_command_line = True
@@ -39,23 +41,29 @@ class Application(Gtk.Application):
         """Loads the settings, the stylesheet and the window."""
         Gtk.Application.do_startup(self)
         self.config = Config()
-        self._load_style()
+        self._provider = Gtk.CssProvider()
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), self._provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.load_style()
         self.window = Sidebar(self, self.config)
         log("docking through %s" % self.window.backend.label)
         if not self.config["start_hidden"]:
             self.window.reveal()
 
-    def _load_style(self):
-        """Loads the stylesheet, which sets the sidebar's shape and leaves its colours to the theme."""
-        provider = Gtk.CssProvider()
+    def load_style(self):
+        """Loads the palette and the stylesheet, which sets the shape and leaves colour to the palette."""
         style = data_path("style.css")
         try:
-            provider.load_from_path(style)
+            with open(style) as handle:
+                css = handle.read()
+        except OSError as error:
+            log("could not read %s: %s" % (style, error))
+            return
+        css = palette_css(str(self.config["theme_source"]).lower()) + css
+        try:
+            self._provider.load_from_data(css.encode())
         except GLib.Error as error:
             log("could not load %s: %s" % (style, error.message))
-            return
-        Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     def do_command_line(self, command_line):
         """Acts on the options a launch was given, in this process or in the running one."""
