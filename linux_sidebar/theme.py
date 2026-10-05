@@ -44,14 +44,14 @@ _said = None
 
 
 def palette_css(source):
-    """Returns the block of @define-color rules the stylesheet and the note editor read."""
+    """Returns the @define-color rules the stylesheets read, and whether the shell supplied them."""
     shell = {} if source == "gtk" else shell_palette()
     if source == "shell" and not shell:
         _say("no desktop shell theme to read, falling back to the GTK theme")
     lines = ["@define-color %s %s;" % (name, shell.get(name, fallback))
              for name, _selector, _property, fallback in PALETTE]
     lines += ["@define-color %s %s;" % (name, value) for name, value in DERIVED]
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n", bool(shell)
 
 
 def shell_palette():

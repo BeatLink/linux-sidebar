@@ -61,6 +61,7 @@ stdenvNoCC.mkDerivation {
         cp -r linux_sidebar $out/share/linux-sidebar/
         cp -r vendor $out/share/linux-sidebar/
         install -Dm644 style.css $out/share/linux-sidebar/style.css
+        install -Dm644 shell.css $out/share/linux-sidebar/shell.css
 
         install -Dm755 linux-sidebar $out/bin/linux-sidebar
         substituteInPlace $out/bin/linux-sidebar \

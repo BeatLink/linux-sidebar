@@ -51,19 +51,22 @@ class Application(Gtk.Application):
             self.window.reveal()
 
     def load_style(self):
-        """Loads the palette and the stylesheet, which sets the shape and leaves colour to the palette."""
-        style = data_path("style.css")
+        """Loads the palette and the stylesheets, which set the shape and leave colour to the palette."""
+        palette, from_shell = palette_css(str(self.config["theme_source"]).lower())
+        files = ["style.css", "shell.css"] if from_shell else ["style.css"]
+        css = [palette]
+        for name in files:
+            path = data_path(name)
+            try:
+                with open(path) as handle:
+                    css.append(handle.read())
+            except OSError as error:
+                log("could not read %s: %s" % (path, error))
+                return
         try:
-            with open(style) as handle:
-                css = handle.read()
-        except OSError as error:
-            log("could not read %s: %s" % (style, error))
-            return
-        css = palette_css(str(self.config["theme_source"]).lower()) + css
-        try:
-            self._provider.load_from_data(css.encode())
+            self._provider.load_from_data("\n".join(css).encode())
         except GLib.Error as error:
-            log("could not load %s: %s" % (style, error.message))
+            log("could not load the stylesheet: %s" % error.message)
 
     def do_command_line(self, command_line):
         """Acts on the options a launch was given, in this process or in the running one."""

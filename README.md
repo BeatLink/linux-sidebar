@@ -63,8 +63,8 @@ out of that stylesheet, and shades the rest from them. A shell theme written in 
 sidebar cannot find, GNOME Shell's built-in one in particular, leaves it on the GTK theme.
 
 Taking the panel's colours means the sidebar can end up darker or lighter than the GTK theme,
-and the widgets inside it that GTK paints by itself, such as scrollbars and buttons, still
-follow the GTK theme. Choose `gtk` if the two clash.
+so with them the sidebar also paints its buttons and entries from the shell's palette rather
+than leaving them to GTK. Scrollbars and the settings window still follow the GTK theme.
 
 ## Installing
 

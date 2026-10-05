@@ -1,0 +1,67 @@
+/* Loaded after style.css only when the colours come from the desktop shell. The GTK theme can
+   be lighter or darker than the shell's panel, so the widgets it would otherwise paint inside
+   the sidebar, buttons and entries, are painted from the shell palette instead. Flat buttons
+   such as the section headers keep the look style.css gives them. */
+
+#linux-sidebar button:not(.flat),
+#linux-sidebar button:not(.flat):backdrop {
+    background: @sidebar_hover;
+    color: @sidebar_fg;
+    border: 1px solid @sidebar_border;
+    box-shadow: none;
+    text-shadow: none;
+    -gtk-icon-shadow: none;
+}
+
+#linux-sidebar button:not(.flat):hover {
+    background: @sidebar_active;
+}
+
+#linux-sidebar button:not(.flat):active,
+#linux-sidebar button:not(.flat):checked,
+#linux-sidebar button:not(.flat):checked:backdrop {
+    background: @sidebar_selected_bg;
+    color: @sidebar_selected_fg;
+}
+
+#linux-sidebar button:not(.flat):disabled,
+#linux-sidebar button:not(.flat):disabled:backdrop {
+    color: alpha(@sidebar_fg, 0.5);
+}
+
+#linux-sidebar button label,
+#linux-sidebar button label:backdrop {
+    color: inherit;
+}
+
+#linux-sidebar entry,
+#linux-sidebar entry:backdrop {
+    background: @sidebar_base;
+    color: @sidebar_fg;
+    caret-color: @sidebar_fg;
+    border: 1px solid @sidebar_border;
+    box-shadow: none;
+}
+
+#linux-sidebar entry selection {
+    background-color: @sidebar_selected_bg;
+    color: @sidebar_selected_fg;
+}
+
+/* The tab bar's toggle buttons keep the shape style.css gives them. */
+#linux-sidebar #tab-button,
+#linux-sidebar #tab-button:backdrop {
+    background: none;
+    border: none;
+    color: alpha(@sidebar_fg, 0.7);
+}
+
+#linux-sidebar #tab-button:hover {
+    background-color: @sidebar_hover;
+}
+
+#linux-sidebar #tab-button:checked,
+#linux-sidebar #tab-button:checked:backdrop {
+    background-color: @sidebar_active;
+    color: @sidebar_fg;
+}
