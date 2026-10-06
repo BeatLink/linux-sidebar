@@ -58,9 +58,10 @@ of the desktop rather than an application window sitting on it. `theme_source` s
 
 The shell's theme is the one that paints the panel: Cinnamon's, read from the theme named in
 `org.cinnamon.theme name`, or GNOME Shell's from `org.gnome.shell.extensions.user-theme name`.
-The sidebar reads the panel's background and foreground and the menu's background and selection
-out of that stylesheet, and shades the rest from them. A shell theme written in a stylesheet the
-sidebar cannot find, GNOME Shell's built-in one in particular, leaves it on the GTK theme.
+The sidebar reads the panel's background and foreground, the menu's selection and the slider's
+accent out of that stylesheet, and shades the rest from them. A theme that paints its panel with
+a gradient rather than a plain colour, or a stylesheet the sidebar cannot find, GNOME Shell's
+built-in one in particular, leaves it on the GTK theme.
 
 Taking the panel's colours means the sidebar can end up darker or lighter than the GTK theme,
 so with them the sidebar also paints its buttons and entries from the shell's palette rather

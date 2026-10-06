@@ -8,9 +8,9 @@ COLOURS = [
     ("--sidebar-bg", "sidebar_bg", "#f6f5f4"),
     ("--sidebar-fg", "sidebar_fg", "#2e3436"),
     ("--sidebar-base", "sidebar_base", "#ffffff"),
-    ("--sidebar-accent", "sidebar_selected_bg", "#3584e4"),
+    ("--sidebar-accent", "sidebar_accent", "#3584e4"),
     ("--sidebar-accent-fg", "sidebar_selected_fg", "#ffffff"),
-    ("--sidebar-link", "sidebar_selected_bg", "#1c71d8"),
+    ("--sidebar-link", "sidebar_accent", "#1c71d8"),
 ]
 
 

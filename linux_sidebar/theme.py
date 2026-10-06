@@ -7,16 +7,30 @@ from gi.repository import Gdk, Gio, GLib
 
 from .util import log
 
-# The colours style.css and the note editor are painted from. Each entry is
-# (name, shell selector, shell property, GTK theme colour).
+# Where each shell theme puts the panel's own colours; themes differ, so each is a list tried in order.
+PANEL = ["#panel", ".panel-bottom", ".panel-top", ".panel-left", ".panel-right"]
+SELECTED = [".popup-menu-item:active", ".popup-menu-item.selected"]
+SLIDER = [".slider", ".popup-slider-menu-item"]
+
+# The colours style.css and the note editor are painted from. Each entry is (name, the
+# (selector, property) pairs to look for in the shell's theme, the GTK theme colour, and the
+# colour to use when the shell's theme has none, or None where the shell must supply it).
 PALETTE = [
-    ("sidebar_bg", "#panel", "background-color", "@theme_bg_color"),
-    ("sidebar_fg", "#panel", "color", "@theme_fg_color"),
-    ("sidebar_base", ".popup-menu-content", "background-color", "@theme_base_color"),
-    ("sidebar_selected_bg", ".popup-menu-item:active", "background-color",
-     "@theme_selected_bg_color"),
-    ("sidebar_selected_fg", ".popup-menu-item:active", "color", "@theme_selected_fg_color"),
+    ("sidebar_bg", [(s, "background-color") for s in PANEL], "@theme_bg_color", None),
+    ("sidebar_fg", [(s, "color") for s in PANEL], "@theme_fg_color", None),
+    # Menus can be lighter or darker than the panel, so with the shell the base is the panel's.
+    ("sidebar_base", [], "@theme_base_color", "@sidebar_bg"),
+    ("sidebar_selected_bg", [(s, "background-color") for s in SELECTED],
+     "@theme_selected_bg_color", "alpha(@sidebar_fg, 0.2)"),
+    ("sidebar_selected_fg", [(s, "color") for s in SELECTED],
+     "@theme_selected_fg_color", "@sidebar_fg"),
+    # A mid-tone accent reads on a light or a dark strip alike, so the GTK one is a safe stand-in.
+    ("sidebar_accent", [(s, "-slider-active-background-color") for s in SLIDER],
+     "@theme_selected_bg_color", "@theme_selected_bg_color"),
 ]
+
+# Colours that only make sense together, so the shell supplies both or neither.
+PAIRS = [("sidebar_bg", "sidebar_fg"), ("sidebar_selected_bg", "sidebar_selected_fg")]
 
 # Shades of the foreground, so a theme that gives no hover colour of its own still gets one
 # that belongs with the rest of the palette.
@@ -48,8 +62,9 @@ def palette_css(source):
     shell = {} if source == "gtk" else shell_palette()
     if source == "shell" and not shell:
         _say("no desktop shell theme to read, falling back to the GTK theme")
-    lines = ["@define-color %s %s;" % (name, shell.get(name, fallback))
-             for name, _selector, _property, fallback in PALETTE]
+    lines = []
+    for name, _candidates, gtk, fallback in PALETTE:
+        lines.append("@define-color %s %s;" % (name, shell.get(name, fallback if shell else gtk)))
     lines += ["@define-color %s %s;" % (name, value) for name, value in DERIVED]
     return "\n".join(lines) + "\n", bool(shell)
 
@@ -67,12 +82,18 @@ def shell_palette():
         return {}
     rules = _rules(text)
     found = {}
-    for name, selector, prop, _fallback in PALETTE:
-        value = rules.get((selector, prop))
+    for name, candidates, _gtk, _fallback in PALETTE:
+        value = next((rules[c] for c in candidates if c in rules), None)
         if value is not None:
             found[name] = value
-    if found:
-        _say("colours taken from %s" % path)
+    for pair in PAIRS:
+        if not all(name in found for name in pair):
+            for name in pair:
+                found.pop(name, None)
+    if "sidebar_bg" not in found:
+        _say("%s gives the panel no plain colours, so the GTK theme is used" % path)
+        return {}
+    _say("colours taken from %s" % path)
     return found
 
 
@@ -131,7 +152,7 @@ def _first(paths):
 def _rules(text):
     """Returns the colour declarations of a shell stylesheet, keyed by (selector, property)."""
     text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
-    wanted = {(selector, prop) for _n, selector, prop, _f in PALETTE}
+    wanted = {pair for _n, candidates, _g, _f in PALETTE for pair in candidates}
     found = {}
     for selectors, body in re.findall(r"([^{}]+)\{([^{}]*)\}", text):
         names = [part.strip() for part in selectors.split(",")]

@@ -62,8 +62,73 @@ body.toolbar-hidden #toolbar {
     font-family: var(--sidebar-mono-family);
 }
 
+/* CKEditor colours the content for a white page, so each colour it hard-codes is replaced. */
+.ck-content a {
+    color: var(--sidebar-link);
+}
+
+.ck-content code {
+    background-color: var(--sidebar-hover);
+}
+
+.ck-content pre {
+    color: var(--sidebar-fg);
+    background: var(--sidebar-hover);
+    border-color: var(--sidebar-border);
+}
+
+.ck-content pre code {
+    background: unset;
+}
+
+.ck-content blockquote {
+    border-left-color: var(--sidebar-border);
+}
+
+.ck-content[dir="rtl"] blockquote {
+    border-right-color: var(--sidebar-border);
+}
+
+.ck-content hr {
+    background: var(--sidebar-border);
+}
+
+.ck-content table.table:not(.layout-table),
+.ck-content figure.table:not(.layout-table) > table,
+.ck-content table.table:not(.layout-table) :is(td, th),
+.ck-content figure.table:not(.layout-table) > table :is(td, th) {
+    border-color: var(--sidebar-border);
+}
+
+.ck-content table.table:not(.layout-table) th,
+.ck-content figure.table:not(.layout-table) > table th {
+    background: var(--sidebar-hover);
+}
+
+.ck-content .todo-list .todo-list__label > input:before,
+.ck-editor__editable.ck-content .todo-list .todo-list__label > span[contenteditable="false"] > input:before {
+    border-color: var(--sidebar-fg);
+}
+
+.ck-content .todo-list .todo-list__label > input[checked]:before,
+.ck-editor__editable.ck-content .todo-list .todo-list__label > span[contenteditable="false"] > input[checked]:before {
+    background: var(--sidebar-accent);
+    border-color: var(--sidebar-accent);
+}
+
+.ck-content .page-break__label {
+    color: var(--sidebar-fg);
+    background: var(--sidebar-base);
+    border-color: var(--sidebar-border);
+}
+
 /* CKEditor's own theme variables, pointed at the desktop's colours. */
 :root {
+    --ck-content-font-color: var(--sidebar-fg);
+    --ck-content-color-image-caption-background: var(--sidebar-hover);
+    --ck-content-color-image-caption-text: var(--sidebar-fg);
+    --ck-content-color-table-caption-background: var(--sidebar-hover);
+    --ck-content-color-table-caption-text: var(--sidebar-fg);
     --ck-color-base-background: var(--sidebar-base);
     --ck-color-base-foreground: var(--sidebar-bg);
     --ck-color-base-text: var(--sidebar-fg);

@@ -125,7 +125,7 @@
 
 #timer-time.finished,
 #timer-time.finished:backdrop {
-    color: @sidebar_selected_bg;
+    color: @sidebar_accent;
     font-weight: bold;
 }
 
