@@ -81,8 +81,11 @@ body.toolbar-hidden #toolbar {
     background: unset;
 }
 
+/* WebKit leaves a clipped quote unpainted in a scrolled editor, so the quote holds its floats without clipping. */
 .ck-content blockquote {
     border-left-color: var(--sidebar-border);
+    overflow: visible;
+    display: flow-root;
 }
 
 .ck-content[dir="rtl"] blockquote {
