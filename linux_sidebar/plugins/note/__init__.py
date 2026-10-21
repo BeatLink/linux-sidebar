@@ -123,13 +123,14 @@ class NotePlugin(SidebarPlugin):
 
     # Contents -------------------------------------------------------------------------------
 
-    def load(self, force=False):
-        """Rereads the note from the store and puts it in the editor."""
+    def load(self, force=False, quiet=False):
+        """Rereads the note from the store and puts it in the editor, saying nothing of a failure when quiet."""
         self._cancel_save()
 
         def done(text):
             if text is None:
-                self.host.flash("Could not read the note")
+                if not quiet:
+                    self.host.flash("Could not read the note")
                 return
             if not force and self._dirty:
                 return

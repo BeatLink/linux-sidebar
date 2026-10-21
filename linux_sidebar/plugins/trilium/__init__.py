@@ -75,7 +75,7 @@ class TriliumPlugin(NotePlugin):
     def _poll(self):
         """Asks Trilium whether the note moved on, and rereads it if it did, or retries a note that never loaded."""
         if not self._loaded:
-            self.load(force=True)
+            self.load(force=True, quiet=True)
             return GLib.SOURCE_CONTINUE
         if self._dirty:
             return GLib.SOURCE_CONTINUE
@@ -91,9 +91,9 @@ class TriliumPlugin(NotePlugin):
         self.store.poll(done)
         return GLib.SOURCE_CONTINUE
 
-    def load(self, force=False):
+    def load(self, force=False, quiet=False):
         """Rereads the note and puts Trilium's title in the section header."""
-        super().load(force=force)
+        super().load(force=force, quiet=quiet)
         GLib.idle_add(self._apply_title)
 
     def _apply_title(self):
