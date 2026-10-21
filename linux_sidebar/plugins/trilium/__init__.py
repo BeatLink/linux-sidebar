@@ -73,8 +73,11 @@ class TriliumPlugin(NotePlugin):
         self._reload_source = GLib.timeout_add_seconds(interval, self._poll)
 
     def _poll(self):
-        """Asks Trilium whether the note moved on, and rereads it if it did."""
-        if self._dirty or not self._loaded:
+        """Asks Trilium whether the note moved on, and rereads it if it did, or retries a note that never loaded."""
+        if not self._loaded:
+            self.load(force=True)
+            return GLib.SOURCE_CONTINUE
+        if self._dirty:
             return GLib.SOURCE_CONTINUE
 
         def done(changed):
