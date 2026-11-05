@@ -124,7 +124,7 @@ filling the tab, which the note is, takes whatever height the sections above and
 The tab bar appears once there is more than one tab. **Ctrl+Tab** and **Ctrl+Shift+Tab** move
 between them, as do `--next-tab` and `--previous-tab`.
 
-Five plugins are built in:
+Six plugins are built in:
 
 | Plugin | What it is |
 | --- | --- |
@@ -133,6 +133,7 @@ Five plugins are built in:
 | `clock` | The time and the date, in whatever `strftime` format you give it |
 | `command` | The standard output of a shell command, rerun on a timer |
 | `timer` | A countdown with presets, which runs a command of your choosing at zero |
+| `x-tasks` | My Day, or the tasks under a set of filters, from an [X-Tasks](https://github.com/x-tech-laboratories/X-Tasks) server |
 
 ### Writing one
 
@@ -264,6 +265,34 @@ save produces is recorded, so the sidebar never mistakes its own write for someb
 token is kept for the session.
 
 This needs `libsoup` 3. Without it the plugin loads but every request fails and says so.
+
+## X-Tasks
+
+The `x-tasks` plugin lists tasks from an X-Tasks web server, read through its `POST /api/<call>`
+endpoints. It only reads: it calls `list_tasks`, `list_tags` and `get_settings`, and clicking a
+task opens it in the X-Tasks app through its `x-tasks://` link. The button in the section header
+switches between the two views.
+
+| View | What it lists |
+| --- | --- |
+| My Day | The tasks in X-Tasks' My Day, following its own *My Day clears itself each day* setting |
+| Filters | The tasks holding every one of the tags named in `filters`, or any of them with `filter_match` set to `any` |
+
+A filter is a tag named in the X-Tasks sidebar, rule tags such as *Actionable* included, and it is
+matched exactly as the app does: a tag counts on a subtask when a task above it has it, and the
+app's *tags below a tag count too* setting is followed. Subtasks sit under their parent.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `server_url` | `http://127.0.0.1:3918` | Where the X-Tasks server is |
+| `token` | empty | The server's access token |
+| `token_command` | empty | A command printing the token, run once and kept for the session |
+| `view_mode` | `my_day` | `my_day` or `filters` |
+| `filters` | `Actionable` | Tag names, comma separated |
+| `show_done` | `false` | Also list completed tasks |
+| `limit` | `0` | Most tasks shown, 0 for all |
+| `refresh_interval` | `30` | Seconds between reads, 0 to never read again |
+| `allow_insecure_tls` | `false` | Accept a certificate from a private authority |
 
 ## The timer
 
