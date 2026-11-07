@@ -124,7 +124,7 @@ filling the tab, which the note is, takes whatever height the sections above and
 The tab bar appears once there is more than one tab. **Ctrl+Tab** and **Ctrl+Shift+Tab** move
 between them, as do `--next-tab` and `--previous-tab`.
 
-Six plugins are built in:
+Seven plugins are built in:
 
 | Plugin | What it is |
 | --- | --- |
@@ -134,6 +134,7 @@ Six plugins are built in:
 | `command` | The standard output of a shell command, rerun on a timer |
 | `timer` | A countdown with presets, which runs a command of your choosing at zero |
 | `x-tasks` | My Day, or the tasks under a set of filters, from an [X-Tasks](https://github.com/x-tech-laboratories/X-Tasks) server |
+| `web` | A web page, such as an X-Tasks server, that stays signed in |
 
 ### Writing one
 
@@ -301,6 +302,36 @@ task shows the date the app is set to go by, its start date or its due date.
 | `limit` | `0` | Most tasks shown, 0 for all |
 | `refresh_interval` | `30` | Seconds between reads, 0 to never read again |
 | `allow_insecure_tls` | `false` | Accept a certificate from a private authority |
+
+## Web page
+
+The `web` plugin shows any web page in a WebKitGTK view, which makes it the way to put the whole
+X-Tasks app in the sidebar: point it at the server with `?view=my_day`, or `?view=` and a tag
+name, and that view opens instead of the app's launch view. Below 700 pixels X-Tasks uses its
+phone layout, with its own sidebar as a drawer behind the menu button.
+
+Each instance keeps its own cookies and site data under
+`~/.local/share/linux-sidebar/web/<instance id>`, so a page signed into once stays signed in
+across restarts. A page that fails to load says so in the footer and tries again every 30
+seconds, which covers a sidebar that starts before the network does. Links to other sites, and
+links meant for a new window, open in the desktop's browser.
+
+With `match_theme` on, the page is handed the sidebar's colours and font as the same
+`--sidebar-*` CSS variables the note editor is painted from, plus `--sidebar-color-scheme`,
+which is `light` or `dark`. A page that does not use them looks as it always does; X-Tasks
+takes them up and repaints itself to match the sidebar.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `url` | empty | The page to show; `https://` is added when no scheme is given |
+| `zoom` | `100` | Zoom, in percent |
+| `expands` | `true` | Fill the tab |
+| `height` | `400` | Height in pixels when not filling the tab |
+| `match_theme` | `true` | Offer the page the sidebar's colours |
+| `open_links_outside` | `true` | Open other sites in the desktop's browser |
+| `allow_insecure_tls` | `false` | Accept an untrusted certificate from the host in `url`, and only that host |
+
+This needs WebKitGTK 4.1 or 4.0, the same as the rich note editor.
 
 ## The timer
 
