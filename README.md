@@ -327,6 +327,7 @@ takes them up and repaints itself to match the sidebar.
 | `zoom` | `100` | Zoom, in percent |
 | `expands` | `true` | Fill the tab |
 | `height` | `400` | Height in pixels when not filling the tab |
+| `fit_width` | `true` | Keep the page to the sidebar's width: anything wider is clipped, long words wrap, and the page never scrolls sideways |
 | `match_theme` | `true` | Offer the page the sidebar's colours |
 | `open_links_outside` | `true` | Open other sites in the desktop's browser |
 | `allow_insecure_tls` | `false` | Accept an untrusted certificate from the host in `url`, and only that host |

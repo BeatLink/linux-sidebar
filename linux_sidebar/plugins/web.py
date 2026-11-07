@@ -19,6 +19,13 @@ DATA_DIR = os.path.join(GLib.get_user_data_dir(), APP_NAME, "web")
 CACHE_DIR = os.path.join(GLib.get_user_cache_dir(), APP_NAME, "web")
 RETRY_SECONDS = 30
 
+# A page wider than the sidebar is clipped at its edge, and long words and wide media are held in.
+FIT_WIDTH_CSS = (
+    "html, body { overflow-x: hidden !important; max-width: 100vw !important; } "
+    "body { overflow-wrap: anywhere; } "
+    "img, video, iframe, table, pre { max-width: 100% !important; } "
+)
+
 
 class WebPlugin(SidebarPlugin):
     """One web page, with its own signed-in session."""
@@ -33,6 +40,8 @@ class WebPlugin(SidebarPlugin):
             ("zoom", "Zoom, %", "spin", (30, 300, 10)),
             ("expands", "Fill the tab", "switch", None),
             ("height", "Height when not filling the tab", "spin", (100, 2000, 20)),
+            ("fit_width", "Fit the page to the sidebar's width, with no sideways scrolling",
+             "switch", None),
             ("match_theme", "Offer the page the sidebar's colours", "switch", None),
             ("open_links_outside", "Open other sites in the browser", "switch", None),
             ("allow_insecure_tls", "Accept an untrusted certificate from this address", "switch",
@@ -44,6 +53,7 @@ class WebPlugin(SidebarPlugin):
         "zoom": 100,
         "expands": True,
         "height": 400,
+        "fit_width": True,
         "match_theme": True,
         "open_links_outside": True,
         "allow_insecure_tls": False,
@@ -87,7 +97,7 @@ class WebPlugin(SidebarPlugin):
         self.view.connect("load-changed", self._on_load_changed)
         self.view.connect("load-failed", self._on_load_failed)
         self.view.connect("load-failed-with-tls-errors", self._on_tls_errors)
-        self.view.connect("style-updated", lambda _v: self._apply_theme())
+        self.view.connect("style-updated", lambda _v: self._apply_styles())
         self._apply_size()
         return self.view
 
@@ -105,7 +115,7 @@ class WebPlugin(SidebarPlugin):
         """Loads the page."""
         if self.view is None:
             return
-        self._apply_theme()
+        self._apply_styles()
         self._load()
 
     # Settings -------------------------------------------------------------------------------
@@ -116,7 +126,7 @@ class WebPlugin(SidebarPlugin):
         if self.view is None:
             return
         self._apply_size()
-        self._apply_theme()
+        self._apply_styles()
         # A page decides once, as it loads, whether to follow the colours, so a change needs a reload.
         matching = bool(self.settings.get("match_theme"))
         if self._address() != self._loaded_url or matching != self._matched_theme:
@@ -137,17 +147,18 @@ class WebPlugin(SidebarPlugin):
 
     # Themes ---------------------------------------------------------------------------------
 
-    # The variables are the same ones the note editor is painted from, so one page can serve both.
-    def _apply_theme(self):
-        """Hands the page the sidebar's current colours and font as CSS variables."""
+    def _apply_styles(self):
+        """Adds the style sheets the settings ask for: the width limit and the sidebar's colours."""
         self.content.remove_all_style_sheets()
-        if not self.settings.get("match_theme"):
-            return
-        css = theme.theme_css(self.view, theme.default_font(), 11, "monospace")
-        css += " :root { --sidebar-color-scheme: %s; }" % _colour_scheme(self.view)
-        self.content.add_style_sheet(WebKit.UserStyleSheet(
-            css, WebKit.UserContentInjectedFrames.TOP_FRAME, WebKit.UserStyleLevel.USER,
-            None, None))
+        css = ""
+        if self.settings.get("fit_width"):
+            css += FIT_WIDTH_CSS
+        if self.settings.get("match_theme"):
+            css += _theme_css(self.view)
+        if css:
+            self.content.add_style_sheet(WebKit.UserStyleSheet(
+                css, WebKit.UserContentInjectedFrames.TOP_FRAME, WebKit.UserStyleLevel.USER,
+                None, None))
 
     # Loading --------------------------------------------------------------------------------
 
@@ -256,6 +267,13 @@ class WebPlugin(SidebarPlugin):
     def stop(self):
         """Stops retrying."""
         self._cancel_retry()
+
+
+# The variables are the same ones the note editor is painted from, so one page can serve both.
+def _theme_css(widget):
+    """Returns the sidebar's current colours and font as CSS variables."""
+    css = theme.theme_css(widget, theme.default_font(), 11, "monospace")
+    return css + " :root { --sidebar-color-scheme: %s; }" % _colour_scheme(widget)
 
 
 def _colour_scheme(widget):
