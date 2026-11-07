@@ -1,14 +1,16 @@
 """Shows X-Tasks tasks in the sidebar: either My Day, or the tasks under a set of filter tags.
 
-It only reads. Clicking a task opens it in the X-Tasks app through its x-tasks:// link.
+Clicking a task opens it in the X-Tasks app through its x-tasks:// link, and the box above the
+list adds a task to the view being shown.
 """
 
 from datetime import datetime
 
 import gi
 
+gi.require_version("Gdk", "3.0")
 gi.require_version("Pango", "1.0")
-from gi.repository import GLib, Gtk, Pango
+from gi.repository import Gdk, GLib, Gtk, Pango
 
 from ...util import run_argv
 from ..api import SidebarPlugin
@@ -31,6 +33,7 @@ class XTasksPlugin(SidebarPlugin):
             ("filter_match", "A task must have", "combo",
              [("all", "Every filter"), ("any", "Any filter")]),
             ("show_done", "Show completed tasks", "switch", None),
+            ("show_add", "Show the box for adding a task", "switch", None),
             ("limit", "Most tasks shown, 0 for all", "spin", (0, 500, 1)),
             ("refresh_interval", "Refresh every, s", "spin", (0, 3600, 5)),
             ("expands", "Fill the tab", "switch", None),
@@ -47,6 +50,7 @@ class XTasksPlugin(SidebarPlugin):
         "filters": "Actionable",
         "filter_match": "all",
         "show_done": False,
+        "show_add": True,
         "limit": 0,
         "refresh_interval": 30,
         "expands": True,
@@ -69,14 +73,73 @@ class XTasksPlugin(SidebarPlugin):
     # Building -------------------------------------------------------------------------------
 
     def build(self):
-        """Builds the scrolling list the tasks are drawn into."""
+        """Builds the box for adding a task above the scrolling list the tasks are drawn into."""
+        self.entry = Gtk.Entry()
+        self.entry.set_name("x-tasks-add")
+        self.entry.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "list-add-symbolic")
+        self.entry.connect("activate", lambda _e: self._add())
+        self.entry.connect("key-press-event", self._on_entry_key)
+        self.entry.set_no_show_all(True)
+
         self.list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.list.set_name("x-tasks")
         scroller = Gtk.ScrolledWindow()
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.set_propagate_natural_height(True)
         scroller.add(self.list)
-        return scroller
+
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        body.pack_start(self.entry, False, False, 0)
+        body.pack_start(scroller, True, True, 0)
+        self._show_entry()
+        return body
+
+    def _show_entry(self):
+        """Shows the box for adding a task unless the settings hide it, and says where a task goes."""
+        self.entry.set_visible(bool(self.settings.get("show_add")))
+        where = ", ".join(self._filter_names()) if self._mode() == "filters" else "My Day"
+        self.entry.set_placeholder_text("Add a task to %s" % (where or "the filters"))
+
+    def _filter_names(self):
+        """Returns the filter tag names typed into the settings."""
+        return [name.strip() for name in (self.settings.get("filters") or "").split(",") if name.strip()]
+
+    def _on_entry_key(self, _entry, event):
+        """Hands the keyboard back on Escape."""
+        if event.keyval == Gdk.KEY_Escape:
+            self.entry.set_text("")
+            self.host.release_keyboard()
+            return True
+        return False
+
+    def _add(self):
+        """Adds the typed task to My Day, or under the filters, then rereads the list."""
+        title = self.entry.get_text().strip()
+        if not title:
+            return
+        if self._mode() == "my_day":
+            tag_ids, my_day_on = [], datetime.now().strftime("%Y-%m-%d")
+        elif self._data is None:
+            self.host.flash("X-Tasks: the filters have not loaded yet")
+            return
+        else:
+            filter_tags, _unknown = logic.tags_named(self._filter_names(), self._data["tags"])
+            tag_ids, my_day_on = logic.tags_for_new_task(filter_tags, self._data["groups"]), None
+
+        self.entry.set_sensitive(False)
+
+        def added(task, error):
+            if self._stopped:
+                return
+            self.entry.set_sensitive(True)
+            if task is None:
+                self.host.flash("X-Tasks: %s" % error)
+                return
+            self.entry.set_text("")
+            self.entry.grab_focus()
+            self.reload()
+
+        source.add_task(self.settings, title, tag_ids, my_day_on, added)
 
     def header_widget(self):
         """Returns the button in the header that switches between My Day and the filters."""
@@ -102,6 +165,7 @@ class XTasksPlugin(SidebarPlugin):
         self.settings["view_mode"] = "filters" if self._mode() == "my_day" else "my_day"
         self.host.save_settings()
         self._label_switch()
+        self._show_entry()
         self._draw()
 
     # Running --------------------------------------------------------------------------------
@@ -146,6 +210,7 @@ class XTasksPlugin(SidebarPlugin):
         """Applies the edited settings and rereads the tasks."""
         self.expands = bool(self.settings.get("expands"))
         self._label_switch()
+        self._show_entry()
         self._schedule()
         self.reload()
 
@@ -165,7 +230,7 @@ class XTasksPlugin(SidebarPlugin):
             visible = logic.in_my_day(board, show_done, since, app_settings)
             title, empty = "My Day", "Nothing in My Day"
         else:
-            names = (self.settings.get("filters") or "").split(",")
+            names = self._filter_names()
             filter_tags, unknown = logic.tags_named(names, board.tags)
             visible = logic.under_filters(board, filter_tags, self.settings.get("filter_match"),
                                           app_settings.get("tag_scope", "subtags"), show_done)

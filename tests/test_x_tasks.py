@@ -119,6 +119,13 @@ class FilterTests(unittest.TestCase):
                 os.environ["TZ"] = zone
             time.tzset()
 
+    def test_a_new_task_takes_plain_filter_tags_and_one_per_single_choice_group(self):
+        groups = [{"id": "priority", "is_single_choice": True}, {"id": "area", "is_single_choice": False}]
+        tags = [tag("high", group_id="priority"), tag("low", group_id="priority"),
+                tag("work", group_id="area"), tag("home", group_id="area"),
+                tag("actionable", rule={"match": "all", "conditions": []})]
+        self.assertEqual(logic.tags_for_new_task(tags, groups), ["high", "work", "home"])
+
     def test_names_are_matched_without_case_and_unknown_ones_reported(self):
         found, unknown = logic.tags_named([" WORK ", "nope", ""], [tag("x", name="Work")])
         self.assertEqual(([t["id"] for t in found], unknown), (["x"], ["nope"]))
@@ -144,7 +151,9 @@ def serve(replies, seen, status=200):
     class Handler(http.server.BaseHTTPRequestHandler):
         def do_POST(self):
             seen.append((self.path, self.headers.get("Authorization")))
-            body = json.dumps(replies.get(self.path.rsplit("/", 1)[1])).encode()
+            sent = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            reply = replies.get(self.path.rsplit("/", 1)[1])
+            body = json.dumps(reply(sent) if callable(reply) else reply).encode()
             self.send_response(status)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
@@ -158,8 +167,8 @@ def serve(replies, seen, status=200):
     return server
 
 
-def load(settings):
-    """Runs one read to the end and returns what it called back with."""
+def run(call, *args):
+    """Runs one source call to the end and returns what it called back with."""
     loop = GLib.MainLoop()
     result = {}
 
@@ -168,18 +177,23 @@ def load(settings):
         loop.quit()
 
     GLib.timeout_add_seconds(10, loop.quit)
-    source.load(settings, done)
+    call(*args, done)
     loop.run()
     return result
+
+
+def load(settings):
+    """Runs one read to the end and returns what it called back with."""
+    return run(source.load, settings)
 
 
 class ServerTests(unittest.TestCase):
     def setUp(self):
         source._tokens.clear()
 
-    def test_load_posts_the_three_calls_with_the_token(self):
+    def test_load_posts_the_four_calls_with_the_token(self):
         seen = []
-        replies = {"list_tasks": [task("a")], "list_tags": [tag("t")],
+        replies = {"list_tasks": [task("a")], "list_tags": [tag("t")], "list_tag_groups": [],
                    "get_settings": {"auto_clear_my_day": True}}
         server = serve(replies, seen)
         result = load({"server_url": "http://127.0.0.1:%d" % server.server_port,
@@ -189,7 +203,23 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(result["data"]["tasks"][0]["id"], "a")
         self.assertEqual(seen, [("/api/list_tasks", "Bearer scratch"),
                                 ("/api/list_tags", "Bearer scratch"),
+                                ("/api/list_tag_groups", "Bearer scratch"),
                                 ("/api/get_settings", "Bearer scratch")])
+
+    def test_add_task_posts_the_title_tags_and_my_day(self):
+        seen, sent = [], []
+
+        def add(args):
+            sent.append(args)
+            return task("new", title=args[0])
+
+        server = serve({"add_task": add}, seen)
+        result = run(source.add_task, {"server_url": "http://127.0.0.1:%d" % server.server_port,
+                                       "token": "scratch"}, "Buy milk", ["t"], "2026-11-04")
+        server.shutdown()
+        self.assertEqual(result, {"data": task("new", title="Buy milk"), "error": ""})
+        self.assertEqual(sent, [["Buy milk", None, ["t"], "2026-11-04"]])
+        self.assertEqual(seen, [("/api/add_task", "Bearer scratch")])
 
     def test_a_refused_token_is_asked_for_again(self):
         seen = []

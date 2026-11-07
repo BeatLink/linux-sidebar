@@ -1,6 +1,6 @@
-"""Reads X-Tasks tasks, tags and settings from its web server's API.
+"""Talks to an X-Tasks web server's API: reads tasks, tags and settings, and adds tasks.
 
-Only list and get calls are sent, so nothing on the server is ever changed.
+Adding a task is the only call that changes anything on the server.
 """
 
 import json
@@ -11,9 +11,40 @@ from ...util import log, run_shell
 # What each token command printed, so a command that asks for a password runs once.
 _tokens = {}
 
+READS = ["list_tasks", "list_tags", "list_tag_groups", "get_settings"]
+
 
 def load(settings, callback):
-    """Calls back with ({"tasks", "tags", "settings"}, "") or with (None, what went wrong)."""
+    """Calls back with ({"tasks", "tags", "groups", "settings"}, "") or with (None, what went wrong)."""
+    calls = list(READS)
+    results = {}
+
+    def next_call():
+        if not calls:
+            callback({"tasks": results["list_tasks"], "tags": results["list_tags"],
+                      "groups": results["list_tag_groups"], "settings": results["get_settings"]}, "")
+            return
+        name = calls.pop(0)
+
+        def done(value, error):
+            if error:
+                callback(None, error)
+                return
+            results[name] = value
+            next_call()
+
+        _call(settings, name, [], done)
+
+    next_call()
+
+
+def add_task(settings, title, tag_ids, my_day_on, callback):
+    """Adds a top-level task and calls back with (the new task, "") or with (None, what went wrong)."""
+    _call(settings, "add_task", [title, None, tag_ids, my_day_on], callback)
+
+
+def _call(settings, name, args, callback):
+    """Posts one bridge call and calls back with (its decoded result, "") or with (None, what went wrong)."""
     base = (settings.get("server_url") or "").rstrip("/")
     if not base:
         callback(None, "no server is set")
@@ -23,38 +54,27 @@ def load(settings, callback):
         if token is None:
             callback(None, "the token command printed no token")
             return
-        calls = ["list_tasks", "list_tags", "get_settings"]
-        results = {}
 
-        def next_call():
-            if not calls:
-                callback({"tasks": results["list_tasks"], "tags": results["list_tags"],
-                          "settings": results["get_settings"]}, "")
+        def done(ok, status, text):
+            if status in (401, 403):
+                # The next call runs the command again, in case the token was changed.
+                _tokens.pop((settings.get("token_command") or "").strip(), None)
+                callback(None, "the server refused the token")
                 return
-            name = calls.pop(0)
+            try:
+                value = json.loads(text) if ok else None
+            except ValueError:
+                value = None
+            if value is None:
+                log("%s failed: %s" % (name, text or status))
+                callback(None, "could not reach the X-Tasks server")
+                return
+            callback(value, "")
 
-            def done(ok, status, text):
-                if status in (401, 403):
-                    # The next read runs the command again, in case the token was changed.
-                    _tokens.pop((settings.get("token_command") or "").strip(), None)
-                    callback(None, "the server refused the token")
-                    return
-                try:
-                    results[name] = json.loads(text) if ok else None
-                except ValueError:
-                    results[name] = None
-                if results[name] is None:
-                    log("%s failed: %s" % (name, text or status))
-                    callback(None, "could not reach the X-Tasks server")
-                    return
-                next_call()
-
-            headers = {"Authorization": "Bearer %s" % token} if token else {}
-            net.request("POST", "%s/api/%s" % (base, name), headers=headers, body="[]",
-                        content_type="application/json",
-                        insecure=bool(settings.get("allow_insecure_tls")), callback=done)
-
-        next_call()
+        headers = {"Authorization": "Bearer %s" % token} if token else {}
+        net.request("POST", "%s/api/%s" % (base, name), headers=headers, body=json.dumps(args),
+                    content_type="application/json",
+                    insecure=bool(settings.get("allow_insecure_tls")), callback=done)
 
     _token(settings, with_token)
 

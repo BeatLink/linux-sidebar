@@ -247,6 +247,25 @@ def under_filters(board, filter_tags, match, scope, show_done):
             and combine(holds(task, tag) for tag in filter_tags)]
 
 
+def tags_for_new_task(filter_tags, groups):
+    """Returns the ids of the filter tags a task added under them carries.
+
+    Rule tags apply by themselves, and a group holding one tag per task gives only its first.
+    """
+    single_choice = {group["id"] for group in groups if group.get("is_single_choice")}
+    filled = set()
+    ids = []
+    for tag in filter_tags:
+        if tag.get("rule"):
+            continue
+        if tag["group_id"] in single_choice:
+            if tag["group_id"] in filled:
+                continue
+            filled.add(tag["group_id"])
+        ids.append(tag["id"])
+    return ids
+
+
 def outline(visible, board):
     """Returns (task, depth) pairs in reading order, each task under its nearest ancestor that is also shown."""
     shown = {task["id"] for task in visible}

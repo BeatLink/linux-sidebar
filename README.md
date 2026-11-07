@@ -269,9 +269,15 @@ This needs `libsoup` 3. Without it the plugin loads but every request fails and 
 ## X-Tasks
 
 The `x-tasks` plugin lists tasks from an X-Tasks web server, read through its `POST /api/<call>`
-endpoints. It only reads: it calls `list_tasks`, `list_tags` and `get_settings`, and clicking a
-task opens it in the X-Tasks app through its `x-tasks://` link. The button in the section header
-switches between the two views.
+endpoints `list_tasks`, `list_tags`, `list_tag_groups` and `get_settings`. Clicking a task opens it
+in the X-Tasks app through its `x-tasks://` link. The button in the section header switches between
+the two views.
+
+The box above the list adds a task with `add_task`, the one call that changes anything. Type a
+title and press **Enter**; **Escape** hands the keyboard back. In My Day the task goes into today's
+My Day. Under the filters it carries the plain filter tags, as a task added in the app does: rule
+tags apply by themselves, and a group allowing one tag per task gives only its first. The title is
+taken as typed, so the app's quick-add syntax for dates and tags is not read.
 
 | View | What it lists |
 | --- | --- |
@@ -291,6 +297,7 @@ task shows the date the app is set to go by, its start date or its due date.
 | `view_mode` | `my_day` | `my_day` or `filters` |
 | `filters` | `Actionable` | Tag names, comma separated |
 | `show_done` | `false` | Also list completed tasks |
+| `show_add` | `true` | Show the box for adding a task |
 | `limit` | `0` | Most tasks shown, 0 for all |
 | `refresh_interval` | `30` | Seconds between reads, 0 to never read again |
 | `allow_insecure_tls` | `false` | Accept a certificate from a private authority |
