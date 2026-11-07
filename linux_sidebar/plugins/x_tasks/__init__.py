@@ -63,6 +63,8 @@ class XTasksPlugin(SidebarPlugin):
         self._request = 0
         self._stopped = False
         self._data = None
+        self._drawn = None
+        self._due_labels = []
 
     # Building -------------------------------------------------------------------------------
 
@@ -160,7 +162,7 @@ class XTasksPlugin(SidebarPlugin):
 
         if self._mode() == "my_day":
             since = logic.my_day_since(app_settings, now.strftime("%Y-%m-%d"))
-            visible = logic.in_my_day(board, show_done, since)
+            visible = logic.in_my_day(board, show_done, since, app_settings)
             title, empty = "My Day", "Nothing in My Day"
         else:
             names = (self.settings.get("filters") or "").split(",")
@@ -175,22 +177,42 @@ class XTasksPlugin(SidebarPlugin):
         limit = int(self.settings.get("limit") or 0)
         if limit > 0:
             rows = rows[:limit]
+        # A name given to the section by hand is kept in place of the view's.
+        title = self.host.instance.get("title") or title
         self.host.set_title("%s · %d" % (title, len(visible)))
-        self._fill(rows, empty, now)
+        self._fill(rows, empty, now, app_settings.get("task_date_field", "due"))
 
-    def _fill(self, rows, empty, now):
+    def _fill(self, rows, empty, now, field):
         """Replaces the list's contents with one button per task, or a line saying there are none."""
+        # Rebuilding on every read would drop the hover and can jump the scroll, so an unchanged list is left alone.
+        drawn = (empty, [(task["id"], task["title"], task["is_done"], depth,
+                          logic.due_label(logic.task_date(task, field), now)) for task, depth in rows])
+        if drawn == self._drawn:
+            self._mark_overdue(now)
+            return
+        self._drawn = drawn
         for child in self.list.get_children():
             child.destroy()
+        self._due_labels = []
         if not rows:
             label = Gtk.Label(label=empty, xalign=0.0)
             label.set_name("x-tasks-empty")
             self.list.pack_start(label, False, False, 0)
         for task, depth in rows:
-            self.list.pack_start(self._row(task, depth, now), False, False, 0)
+            self.list.pack_start(self._row(task, depth, now, field), False, False, 0)
+        self._mark_overdue(now)
         self.list.show_all()
 
-    def _row(self, task, depth, now):
+    def _mark_overdue(self, now):
+        """Marks the dates that have passed since the list was built."""
+        for label, text, is_done in self._due_labels:
+            context = label.get_style_context()
+            if not is_done and logic.is_overdue(text, now):
+                context.add_class("overdue")
+            else:
+                context.remove_class("overdue")
+
+    def _row(self, task, depth, now, field):
         """Builds the button for one task: its state, its title and its due date."""
         line = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         line.set_margin_start(depth * 14)
@@ -198,24 +220,24 @@ class XTasksPlugin(SidebarPlugin):
         state = Gtk.Label(label="☑" if task["is_done"] else "☐")
         line.pack_start(state, False, False, 0)
 
-        title = Gtk.Label(label=task["title"] or "(untitled)", xalign=0.0)
+        text = task["title"] or "(untitled)"
+        title = Gtk.Label(label=text, xalign=0.0)
         title.set_ellipsize(Pango.EllipsizeMode.END)
         if task["is_done"]:
-            title.set_markup("<s>%s</s>" % GLib.markup_escape_text(task["title"]))
+            title.set_markup("<s>%s</s>" % GLib.markup_escape_text(text))
         line.pack_start(title, True, True, 0)
 
-        due = task.get("due_at")
+        due = logic.task_date(task, field)
         if due:
             label = Gtk.Label(label=logic.due_label(due, now))
             label.set_name("x-tasks-due")
-            if not task["is_done"] and logic.is_overdue(due, now):
-                label.get_style_context().add_class("overdue")
+            self._due_labels.append((label, due, task["is_done"]))
             line.pack_end(label, False, False, 0)
 
         button = Gtk.Button()
         button.set_name("x-tasks-row")
         button.set_relief(Gtk.ReliefStyle.NONE)
-        button.set_tooltip_text(task["title"])
+        button.set_tooltip_text(text)
         button.add(line)
         button.connect("clicked", lambda _b: run_argv(
             ["xdg-open", "x-tasks://task/%s" % task["id"]], None, lambda *_args: None))
@@ -224,6 +246,7 @@ class XTasksPlugin(SidebarPlugin):
     def stop(self):
         """Stops the refresh timer and ignores any read still on its way."""
         self._stopped = True
+        self.host.set_status("")
         if self._source:
             GLib.source_remove(self._source)
             self._source = 0

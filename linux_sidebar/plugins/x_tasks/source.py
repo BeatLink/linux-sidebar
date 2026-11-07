@@ -20,6 +20,9 @@ def load(settings, callback):
         return
 
     def with_token(token):
+        if token is None:
+            callback(None, "the token command printed no token")
+            return
         calls = ["list_tasks", "list_tags", "get_settings"]
         results = {}
 
@@ -32,6 +35,8 @@ def load(settings, callback):
 
             def done(ok, status, text):
                 if status in (401, 403):
+                    # The next read runs the command again, in case the token was changed.
+                    _tokens.pop((settings.get("token_command") or "").strip(), None)
                     callback(None, "the server refused the token")
                     return
                 try:
@@ -55,7 +60,10 @@ def load(settings, callback):
 
 
 def _token(settings, callback):
-    """Calls back with the access token, which a command can print instead of it being kept in the settings."""
+    """Calls back with the access token, which a command can print instead of it being kept in the settings.
+
+    It calls back with None when the command printed nothing, so no request is sent without the token.
+    """
     command = (settings.get("token_command") or "").strip()
     if not command:
         callback((settings.get("token") or "").strip())
@@ -66,8 +74,10 @@ def _token(settings, callback):
 
     def done(ok, out):
         token = out.strip() if ok else ""
-        if token:
-            _tokens[command] = token
+        if not token:
+            callback(None)
+            return
+        _tokens[command] = token
         callback(token)
 
     run_shell(command, None, done)

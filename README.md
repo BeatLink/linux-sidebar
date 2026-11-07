@@ -275,12 +275,13 @@ switches between the two views.
 
 | View | What it lists |
 | --- | --- |
-| My Day | The tasks in X-Tasks' My Day, following its own *My Day clears itself each day* setting |
+| My Day | The tasks in X-Tasks' My Day, following its *My Day clears itself each day* setting, and with *add tasks to My Day as they come due* on, the tasks the app will add the next time it runs |
 | Filters | The tasks holding every one of the tags named in `filters`, or any of them with `filter_match` set to `any` |
 
 A filter is a tag named in the X-Tasks sidebar, rule tags such as *Actionable* included, and it is
 matched exactly as the app does: a tag counts on a subtask when a task above it has it, and the
-app's *tags below a tag count too* setting is followed. Subtasks sit under their parent.
+app's *tags below a tag count too* setting is followed. Subtasks sit under their parent, and each
+task shows the date the app is set to go by, its start date or its due date.
 
 | Key | Default | Meaning |
 | --- | --- | --- |

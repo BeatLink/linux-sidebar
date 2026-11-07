@@ -25,6 +25,20 @@ def has_time(text):
     return "T" in text
 
 
+def parse_instant(text):
+    """Returns the local time an ISO timestamp such as a task's done_at names, or None if it is not one."""
+    try:
+        moment = datetime.fromisoformat((text or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return moment.astimezone().replace(tzinfo=None) if moment.tzinfo else moment
+
+
+def task_date(task, field):
+    """Returns the task's start date or due date, whichever the app's settings make its date."""
+    return task.get("start_at") if field == "start" else task.get("due_at")
+
+
 def days_between(first, second):
     """Returns the whole calendar days from one moment to another."""
     return (second.date() - first.date()).days
@@ -125,7 +139,7 @@ class Board:
         if kind == "start":
             return self._start_holds(condition, task)
         if kind == "completed_within":
-            done_at = parse_date((task.get("done_at") or "")[:16].replace("Z", ""))
+            done_at = parse_instant(task.get("done_at"))
             return bool(task["is_done"]) and done_at is not None and \
                 days_between(done_at, self.now) < condition["days"]
         if kind == "recurring":
@@ -180,11 +194,32 @@ def my_day_since(settings, today):
     return today if settings.get("auto_clear_my_day", True) else ""
 
 
-def in_my_day(board, show_done, since):
-    """Returns the tasks in My Day, which a subtask enters by following its parent."""
+def due_moment(task, field):
+    """Returns the minute a task comes due by its chosen date, as YYYY-MM-DDTHH:MM, or None without one."""
+    text = task_date(task, field)
+    if not text:
+        return None
+    return text if has_time(text) else text + "T00:00"
+
+
+def in_my_day(board, show_done, since, settings=None):
+    """Returns the tasks in My Day, which a subtask enters by following its parent.
+
+    With the app's add-due-tasks setting on, a task that came due since the app last looked is
+    counted too, since the app puts it in My Day the next time it runs.
+    """
+    settings = settings or {}
+    field = settings.get("task_date_field", "due")
+    now = board.now.strftime("%Y-%m-%dT%H:%M")
+    after = settings.get("due_added_to_my_day_until") or ""
+    adds_due = bool(settings.get("add_due_to_my_day"))
+
     def added(task):
         day = task.get("my_day_on")
-        return day is not None and day >= since
+        if day is not None and day >= since:
+            return True
+        moment = due_moment(task, field) if adds_due and not task["is_done"] else None
+        return moment is not None and after < moment <= now
 
     return [task for task in board.tasks
             if (show_done or not task["is_done"]) and any(added(each) for each in board.ancestors(task))]
