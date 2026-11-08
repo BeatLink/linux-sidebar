@@ -1,7 +1,7 @@
 """Shows X-Tasks tasks in the sidebar: either My Day, or the tasks under a set of filter tags.
 
 Clicking a task opens it in the X-Tasks app through its x-tasks:// link, and the box above the
-list adds a task to the view being shown.
+list adds a task to the view being shown, reading the app's Todoist quick-add syntax.
 """
 
 from datetime import datetime
@@ -14,7 +14,7 @@ from gi.repository import Gdk, GLib, Gtk, Pango
 
 from ...util import run_argv
 from ..api import SidebarPlugin
-from . import logic, source
+from . import logic, source, syntax
 
 MODE_NAMES = {"my_day": "My Day", "filters": "Filters"}
 
@@ -113,33 +113,56 @@ class XTasksPlugin(SidebarPlugin):
         return False
 
     def _add(self):
-        """Adds the typed task to My Day, or under the filters, then rereads the list."""
-        title = self.entry.get_text().strip()
-        if not title:
+        """Adds the typed task to My Day, or under the filters, with the tags and dates it names."""
+        text = self.entry.get_text().strip()
+        if not text:
             return
-        if self._mode() == "my_day":
-            tag_ids, my_day_on = [], datetime.now().strftime("%Y-%m-%d")
-        elif self._data is None:
+        if self._mode() == "filters" and self._data is None:
             self.host.flash("X-Tasks: the filters have not loaded yet")
             return
+
+        parsed = {"title": text, "tag_ids": [], "start_at": None, "due_at": None, "problems": []}
+        if self._data is not None and self._data["settings"].get("quick_add_syntax", "todoist") == "todoist":
+            field = self._data["settings"].get("task_date_field", "due")
+            parsed = syntax.parse_quick_add(text, self._data["tags"], self._data["groups"], field,
+                                            datetime.now())
+            # Typing only a date leaves no title, so the text itself is kept as one.
+            parsed["title"] = parsed["title"] or text
+
+        tag_ids, my_day_on = list(parsed["tag_ids"]), None
+        if self._mode() == "my_day":
+            my_day_on = datetime.now().strftime("%Y-%m-%d")
         else:
             filter_tags, _unknown = logic.tags_named(self._filter_names(), self._data["tags"])
-            tag_ids, my_day_on = logic.tags_for_new_task(filter_tags, self._data["groups"]), None
+            for tag_id in logic.tags_for_new_task(filter_tags, self._data["groups"]):
+                if tag_id not in tag_ids:
+                    tag_ids.append(tag_id)
 
         self.entry.set_sensitive(False)
 
-        def added(task, error):
+        def finished(error):
             if self._stopped:
                 return
             self.entry.set_sensitive(True)
-            if task is None:
+            if error:
                 self.host.flash("X-Tasks: %s" % error)
                 return
             self.entry.set_text("")
             self.entry.grab_focus()
+            if parsed["problems"]:
+                self.host.flash("X-Tasks: %s" % ", ".join(parsed["problems"]))
             self.reload()
 
-        source.add_task(self.settings, title, tag_ids, my_day_on, added)
+        def added(task, error):
+            if task is None:
+                finished(error)
+            elif parsed["start_at"] or parsed["due_at"]:
+                source.set_task_schedule(self.settings, task["id"], parsed["start_at"],
+                                         parsed["due_at"], lambda _value, error: finished(error))
+            else:
+                finished("")
+
+        source.add_task(self.settings, parsed["title"], tag_ids, my_day_on, added)
 
     def header_widget(self):
         """Returns the button in the header that switches between My Day and the filters."""

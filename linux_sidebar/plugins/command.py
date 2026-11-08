@@ -89,6 +89,7 @@ class CommandPlugin(SidebarPlugin):
 
     def settings_changed(self):
         """Applies the edited settings and reruns the command."""
+        self.expands = bool(self.settings.get("expands"))
         self._apply_style()
         self._schedule()
         self.reload()

@@ -1,6 +1,6 @@
 """Talks to an X-Tasks web server's API: reads tasks, tags and settings, and adds tasks.
 
-Adding a task is the only call that changes anything on the server.
+Adding a task, and giving it its dates, are the only calls that change anything on the server.
 """
 
 import json
@@ -43,6 +43,12 @@ def add_task(settings, title, tag_ids, my_day_on, callback):
     _call(settings, "add_task", [title, None, tag_ids, my_day_on], callback)
 
 
+def set_task_schedule(settings, task_id, start_at, due_at, callback):
+    """Gives a task its dates and calls back with (nothing useful, "") or with (None, what went wrong)."""
+    _call(settings, "set_task_schedule",
+          [task_id, {"start_at": start_at, "due_at": due_at, "recurrence": ""}], callback)
+
+
 def _call(settings, name, args, callback):
     """Posts one bridge call and calls back with (its decoded result, "") or with (None, what went wrong)."""
     base = (settings.get("server_url") or "").rstrip("/")
@@ -62,7 +68,7 @@ def _call(settings, name, args, callback):
                 callback(None, "the server refused the token")
                 return
             try:
-                value = json.loads(text) if ok else None
+                value = (json.loads(text) if text else True) if ok else None
             except ValueError:
                 value = None
             if value is None:

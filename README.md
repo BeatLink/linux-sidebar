@@ -277,8 +277,14 @@ the two views.
 The box above the list adds a task with `add_task`, the one call that changes anything. Type a
 title and press **Enter**; **Escape** hands the keyboard back. In My Day the task goes into today's
 My Day. Under the filters it carries the plain filter tags, as a task added in the app does: rule
-tags apply by themselves, and a group allowing one tag per task gives only its first. The title is
-taken as typed, so the app's quick-add syntax for dates and tags is not read.
+tags apply by themselves, and a group allowing one tag per task gives only its first.
+
+The title is read with the app's Todoist quick-add syntax when the app is set to it, which is its
+default: `#tag` or `@tag` adds a tag, `p1` to `p4` a priority, and a date or time anywhere sets the
+task's date (the start or the due date, as the app is set), such as `tomorrow at 9am`,
+`next friday`, `in 3 weeks` or `march 30`. A "quoted phrase" is left alone. A tag that does not
+exist is reported in the footer and left out of the title. Repeats such as `every monday` are not
+read; the other syntaxes are not either, and their text is kept as typed.
 
 | View | What it lists |
 | --- | --- |

@@ -176,11 +176,16 @@ class Sidebar(Gtk.Window):
     # A greedy section shares the leftover space; the packing has to change with the fold.
     def _on_section_collapsed(self, section):
         """Repacks a tab after one of its sections was folded or unfolded, and saves the state."""
+        self._repack(section)
+        self.config.save()
+
+    def _repack(self, section):
+        """Gives a section the packing its plugin and fold ask for."""
+        section.set_vexpand(section.greedy)
         for _scroller, column in self._pages.values():
             if section in column.get_children():
                 column.child_set_property(section, "expand", section.greedy)
                 column.child_set_property(section, "fill", True)
-        self.config.save()
 
     # Settings -------------------------------------------------------------------------------
 
@@ -297,6 +302,10 @@ class Sidebar(Gtk.Window):
         plugin = self._instances.get(instance_id)
         if plugin is not None:
             _guard(plugin.settings_changed, plugin)
+        # A plugin may have started or stopped filling its tab.
+        section = self._sections.get(instance_id)
+        if section is not None:
+            self._repack(section)
 
     def settings_changed(self, relayout=False):
         """Saves the settings and applies them, rebuilding the tabs if the layout changed."""
@@ -305,8 +314,10 @@ class Sidebar(Gtk.Window):
             self.build_layout()
         self.apply_config()
         if not relayout:
-            for plugin in self._instances.values():
+            for instance_id, plugin in self._instances.items():
                 _guard(plugin.settings_changed, plugin)
+                if instance_id in self._sections:
+                    self._repack(self._sections[instance_id])
 
     # Status ---------------------------------------------------------------------------------
 

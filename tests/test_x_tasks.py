@@ -13,7 +13,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import GLib
 
-from linux_sidebar.plugins.x_tasks import logic, source
+from linux_sidebar.plugins.x_tasks import logic, source, syntax
 
 NOW = datetime(2026, 11, 4, 12, 0)
 
@@ -153,8 +153,10 @@ def serve(replies, seen, status=200):
             seen.append((self.path, self.headers.get("Authorization")))
             sent = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             reply = replies.get(self.path.rsplit("/", 1)[1])
-            body = json.dumps(reply(sent) if callable(reply) else reply).encode()
-            self.send_response(status)
+            reply = reply(sent) if callable(reply) else reply
+            # The real server answers a call with no result with an empty 204.
+            body = b"" if reply == "" else json.dumps(reply).encode()
+            self.send_response(204 if reply == "" and status == 200 else status)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -221,6 +223,15 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(sent, [["Buy milk", None, ["t"], "2026-11-04"]])
         self.assertEqual(seen, [("/api/add_task", "Bearer scratch")])
 
+    def test_set_task_schedule_posts_the_dates_and_accepts_an_empty_reply(self):
+        seen, sent = [], []
+        server = serve({"set_task_schedule": lambda args: sent.append(args) or ""}, seen)
+        result = run(source.set_task_schedule, {"server_url": "http://127.0.0.1:%d" % server.server_port,
+                                                "token": "scratch"}, "n1", None, "2026-11-05")
+        server.shutdown()
+        self.assertEqual(result["error"], "")
+        self.assertEqual(sent, [["n1", {"start_at": None, "due_at": "2026-11-05", "recurrence": ""}]])
+
     def test_a_refused_token_is_asked_for_again(self):
         seen = []
         server = serve({}, seen, status=401)
@@ -240,6 +251,59 @@ class ServerTests(unittest.TestCase):
         server.shutdown()
         self.assertEqual(result["error"], "the token command printed no token")
         self.assertEqual(seen, [])
+
+
+class SyntaxTests(unittest.TestCase):
+    GROUPS = [{"id": "area", "name": "Area", "is_single_choice": False},
+              {"id": "prio", "name": "Priority", "is_single_choice": True}]
+    TAGS = [tag("work", name="Work", group_id="area", position=0),
+            tag("kitchen", name="Kitchen renovation", group_id="area", position=1),
+            tag("high", name="High", group_id="prio", position=0),
+            tag("low", name="Low", group_id="prio", position=1)]
+
+    def parse(self, text, field="due", now=NOW):
+        return syntax.parse_quick_add(text, self.TAGS, self.GROUPS, field, now)
+
+    def test_tags_priority_and_a_dated_time_come_out_of_the_title(self):
+        found = self.parse("Buy milk tomorrow at 9am #work p1")
+        self.assertEqual((found["title"], found["due_at"], found["start_at"]),
+                         ("Buy milk", "2026-11-05T09:00", None))
+        self.assertEqual(found["tag_ids"], ["work", "high"])
+
+    def test_a_later_priority_replaces_an_earlier_one_and_names_ignore_case_and_spaces(self):
+        found = self.parse("p1 p2 @kitchen_renovation")
+        self.assertEqual(found["tag_ids"], ["low", "kitchen"])
+
+    def test_day_phrases(self):
+        due = lambda text: self.parse(text)["due_at"]
+        self.assertEqual(due("call friday"), "2026-11-06")
+        self.assertEqual(due("call next monday"), "2026-11-09")
+        self.assertEqual(due("report in 3 weeks"), "2026-11-25")
+        self.assertEqual(due("party march 30"), "2027-03-30")
+        self.assertEqual(due("party 30 november 2027"), "2027-11-30")
+        self.assertEqual(due("tax eom"), "2026-11-30")
+        self.assertEqual(due("sync 2026-12-01 17:30"), "2026-12-01T17:30")
+        self.assertEqual(due("stand up at 5pm"), "2026-11-04T17:00")
+
+    def test_a_month_end_does_not_spill_over(self):
+        self.assertEqual(self.parse("x next month", now=datetime(2027, 1, 31, 8, 0))["due_at"], "2027-02-28")
+
+    def test_the_chosen_date_field_gets_the_date(self):
+        found = self.parse("plan tomorrow", field="start")
+        self.assertEqual((found["start_at"], found["due_at"]), ("2026-11-05", None))
+
+    def test_only_the_first_date_counts(self):
+        found = self.parse("move tomorrow to friday")
+        self.assertEqual((found["title"], found["due_at"]), ("move to friday", "2026-11-05"))
+
+    def test_quotes_and_short_weekdays_stay_in_the_title(self):
+        found = self.parse('"tomorrow" was sat there')
+        self.assertEqual((found["title"], found["due_at"]), ("tomorrow was sat there", None))
+
+    def test_an_unknown_tag_or_priority_is_reported_and_kept_out_of_the_title(self):
+        found = self.parse("do it #nope p3")
+        self.assertEqual(found["title"], "do it")
+        self.assertEqual(found["problems"], ["No tag is named nope", "No priority tag for p3"])
 
 
 if __name__ == "__main__":
