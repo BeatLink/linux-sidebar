@@ -124,7 +124,7 @@ filling the tab, which the note is, takes whatever height the sections above and
 The tab bar appears once there is more than one tab. **Ctrl+Tab** and **Ctrl+Shift+Tab** move
 between them, as do `--next-tab` and `--previous-tab`.
 
-Seven plugins are built in:
+Six plugins are built in:
 
 | Plugin | What it is |
 | --- | --- |
@@ -133,7 +133,6 @@ Seven plugins are built in:
 | `clock` | The time and the date, in whatever `strftime` format you give it |
 | `command` | The standard output of a shell command, rerun on a timer |
 | `timer` | A countdown with presets, which runs a command of your choosing at zero |
-| `x-tasks` | My Day, or the tasks under a set of filters, from an [X-Tasks](https://github.com/x-tech-laboratories/X-Tasks) server |
 | `web` | A web page, such as an X-Tasks server, that stays signed in |
 
 ### Writing one
@@ -266,48 +265,6 @@ save produces is recorded, so the sidebar never mistakes its own write for someb
 token is kept for the session.
 
 This needs `libsoup` 3. Without it the plugin loads but every request fails and says so.
-
-## X-Tasks
-
-The `x-tasks` plugin lists tasks from an X-Tasks web server, read through its `POST /api/<call>`
-endpoints `list_tasks`, `list_tags`, `list_tag_groups` and `get_settings`. Clicking a task opens it
-in the X-Tasks app through its `x-tasks://` link. The button in the section header switches between
-the two views.
-
-The box above the list adds a task with `add_task`, the one call that changes anything. Type a
-title and press **Enter**; **Escape** hands the keyboard back. In My Day the task goes into today's
-My Day. Under the filters it carries the plain filter tags, as a task added in the app does: rule
-tags apply by themselves, and a group allowing one tag per task gives only its first.
-
-The title is read with the app's Todoist quick-add syntax when the app is set to it, which is its
-default: `#tag` or `@tag` adds a tag, `p1` to `p4` a priority, and a date or time anywhere sets the
-task's date (the start or the due date, as the app is set), such as `tomorrow at 9am`,
-`next friday`, `in 3 weeks` or `march 30`. A "quoted phrase" is left alone. A tag that does not
-exist is reported in the footer and left out of the title. Repeats such as `every monday` are not
-read; the other syntaxes are not either, and their text is kept as typed.
-
-| View | What it lists |
-| --- | --- |
-| My Day | The tasks in X-Tasks' My Day, following its *My Day clears itself each day* setting, and with *add tasks to My Day as they come due* on, the tasks the app will add the next time it runs |
-| Filters | The tasks holding every one of the tags named in `filters`, or any of them with `filter_match` set to `any` |
-
-A filter is a tag named in the X-Tasks sidebar, rule tags such as *Actionable* included, and it is
-matched exactly as the app does: a tag counts on a subtask when a task above it has it, and the
-app's *tags below a tag count too* setting is followed. Subtasks sit under their parent, and each
-task shows the date the app is set to go by, its start date or its due date.
-
-| Key | Default | Meaning |
-| --- | --- | --- |
-| `server_url` | `http://127.0.0.1:3918` | Where the X-Tasks server is |
-| `token` | empty | The server's access token |
-| `token_command` | empty | A command printing the token, run once and kept for the session |
-| `view_mode` | `my_day` | `my_day` or `filters` |
-| `filters` | `Actionable` | Tag names, comma separated |
-| `show_done` | `false` | Also list completed tasks |
-| `show_add` | `true` | Show the box for adding a task |
-| `limit` | `0` | Most tasks shown, 0 for all |
-| `refresh_interval` | `30` | Seconds between reads, 0 to never read again |
-| `allow_insecure_tls` | `false` | Accept a certificate from a private authority |
 
 ## Web page
 
